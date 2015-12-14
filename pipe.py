@@ -1,6 +1,7 @@
 from openpyxl import Workbook, load_workbook
 from numpy.linalg import lstsq
 import numpy as np
+from sklearn.linear_model import LinearRegression
 
 wb = load_workbook(filename='data.xlsm', read_only=True)
 ws = wb.active
@@ -33,6 +34,7 @@ class NPS:
         self.Pout = self.get_pressure(Pout_col)
         self.flow = self.get_data(FLOW_COL)
         self.mode = self.get_data(MODE_COL)
+        self.dP = self.get_pressure_diff()
 
     def get_pump(self, col):
         row_col = []
@@ -76,6 +78,12 @@ class NPS:
             output.append(WS[j].value)
         return output
 
+    def get_pressure_diff(self):
+        Pin = self.Pin
+        Pout = self.Pout
+        output = [round(x - y, 3) for x, y in zip(Pout, Pin)]
+        return output
+
     def get_pump_count(self):
         output = {'1':0, '2':0, '3':0, '4':0}
         for i in self.pump:
@@ -116,6 +124,7 @@ class NPS:
             data['pump'] = self.pump[i]
             data['Pin'] = self.Pin[i]
             data['Pout'] = self.Pout[i]
+            data['dP'] = self.dP[i]
             output.append(data)
         return output
 
@@ -134,10 +143,20 @@ class NPS:
                     break
         return output
 
-
+    def get_filtered_data(self, key):
+        output = []
+        data = self.get_filtered_result()
+        for i in data:
+            output.append(i[key])
+        return output
 
 
 ukhta = NPS('T', 'U', 'W', 'Y')
 
-print(len(ukhta.get_filtered_result()))
-print(len(ukhta.get_raw_result()))
+F = np.array(ukhta.get_filtered_data('flow'))
+F.shape = (len(F), 1)
+dP = np.array(ukhta.get_filtered_data('dP'))
+
+cln = LinearRegression()
+cln.fit(F, dP)
+print(cln.coef_)
