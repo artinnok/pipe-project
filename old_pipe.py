@@ -150,6 +150,7 @@ ukhta = NPS('T', 'U', 'W', 'Y')
 
 #nps_list = [ukhta, sindor, mikun, urdoma]
 
-F = np.array(ukhta.get_flow())
-dP = np.array(ukhta.get_dP())
-E = np.ones(len(F))
+for key, value in ukhta.get_pump_flow().items():
+    print(key, '=>', value)
+
+print(ukhta.get_pump_flow())
