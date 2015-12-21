@@ -37,12 +37,10 @@ class NPS:
         self.flow = self.get_data(FLOW_COL)
         self.mode = self.get_data(MODE_COL)
         self.dP = self.get_pressure_diff()
-
+    # bad
     def get_pump(self, col):
-        row_col = []
+        row_col = [col + str(i) for i in ROWS]
         output = []
-        for i in ROWS:
-            row_col.append(col + str(i))
         for j in row_col:
             u = [0, 0, 0, 0]
             data = WS[j].value
@@ -56,11 +54,10 @@ class NPS:
             output.append(u)
         return output
 
+    # bad
     def get_pressure(self, col):
-        row_col = []
+        row_col = [col + str(i) for i in ROWS]
         output = []
-        for i in ROWS:
-            row_col.append(col + str(i))
         for j in row_col:
             data = WS[j].value
             data = data.replace(',', '.')
@@ -71,40 +68,39 @@ class NPS:
             output.append(res)
         return output
 
+    # ok
     def get_data(self, col):
-        row_col = []
-        output = []
-        for i in ROWS:
-            row_col.append(col + str(i))
-        for j in row_col:
-            output.append(WS[j].value)
+        row_col = [col + str(i) for i in ROWS]
+        output = [WS[i].value for i in row_col]
         return output
 
+    # ok
     def convert_flow(self, data):
-        output = []
-        for i in data:
-            output.append((i*1000*1000)/(850*2*60*60)) # переводим в м3/сек
+        output = [(i*1000*1000)/(850*2*60*60) for i in data] # переводим в м3/сек
         return output
 
+    # ok
     def convert_pressure(self, data):
-        output = []
-        for i in data:
-            output.append((i*9.8*10000 + 101350)/(850*9.8)) # переводим в м
+        output = [(i*9.8*10000 + 101350)/(850*9.8) for i in data] # переводим в м
         return output
 
+    # ok
     def get_pressure_diff(self):
         Pin = np.array(self.Pin)
         Pout = np.array(self.Pout)
         output = Pout - Pin
         return output
 
+    # bad
     def get_pump_count(self):
         output = {'1':0, '2':0, '3':0, '4':0}
+        output = [i for i in self.pump]
         for i in self.pump:
             for j in range(len(i)):
                 output[str(j + 1)] += i[j]
         return output
 
+    # bad
     def get_pump_flow(self):
         output = {'1':[], '2':[], '3':[], '4':[]}
         pump_len = len(self.pump)
@@ -116,6 +112,7 @@ class NPS:
                     output[str(j+1)].append(self.flow[i])
         return output
 
+    # bad
     def get_filtered_pump(self):
         output = set()
         for key, value in self.get_pump_flow().items():
@@ -126,6 +123,7 @@ class NPS:
                 output.add(key)
         return output
 
+    # bad
     def get_raw_result(self):
         output = []
         mode = self.get_data(MODE_COL)
@@ -142,6 +140,7 @@ class NPS:
             output.append(data)
         return output
 
+    # bad
     def get_filtered_result(self):
         output = []
         pump = self.get_filtered_pump()
@@ -157,13 +156,13 @@ class NPS:
                     break
         return output
 
+    # ok
     def get_filtered_data(self, key):
-        output = []
         data = self.get_filtered_result()
-        for i in data:
-            output.append(i[key])
+        output = [i[key] for i in data]
         return output
 
+    # bad
     def get_cutted_result(self, a, b):
         output1 = []
         output2 = []
@@ -180,83 +179,4 @@ class NPS:
 
 
 ukhta = NPS('T', 'U', 'W', 'Y')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# sindor = NPS('AD', 'AE', 'AG', 'AI')
-#mikun = NPS('AN', 'AO', 'AQ', 'AS')
-# urdoma = NPS('AX', 'AO', 'BA', 'BC')
-
-#F = np.array(ukhta.get_filtered_data('flow'))
-#F.shape = (len(F), 1)
-#dP = np.array(ukhta.get_filtered_data('dP'))
-#E = np.ones(len(F))
-
-# cln = LinearRegression()
-# cln.fit(F, dP)
-# print(cln.coef_)
-# A = [E, F, E, F]
-
-#print(lstsq(F, dP))
-
-# a = np.array(ukhta.convert_pressure(ukhta.get_filtered_data('dP')))
-# b = np.array(ukhta.convert_flow(ukhta.get_filtered_data('flow')))
-# a, b = ukhta.get_cutted_result(a,b)
-#
-#
-# c = sindor.convert_pressure(sindor.get_filtered_data('dP'))
-# d = sindor.convert_flow(sindor.get_filtered_data('flow'))
-#
-# e = mikun.convert_pressure(mikun.get_filtered_data('dP'))
-# f = mikun.convert_flow(mikun.get_filtered_data('flow'))
-#
-# g = urdoma.convert_pressure(urdoma.get_filtered_data('dP'))
-# h = urdoma.convert_flow(urdoma.get_filtered_data('flow'))
-
-# b = np.array(b)
-# a = np.array(a)
-# b.shape = (len(b), 1)
-# cln = LinearRegression()
-# cln.fit(b,a)
-# plt.scatter(b,a)
-#
-# plt.xlabel('Q, м3/с')
-# plt.ylabel('H, м')
-# plt.plot(b, cln.predict(b))
-
-# data = (a - cln.predict(b))*100/cln.predict(b)
-# plt.figure(2)
-# plt.xlabel('Отклонение в %')
-# plt.ylabel('Количество')
-# plt.hist(data)
-#
-# matplotlib.rcParams.update({'font.size': 30})
-# plt.show()
+print(ukhta.get_pressure_diff())
