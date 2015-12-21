@@ -1,5 +1,7 @@
 from openpyxl import Workbook, load_workbook
 from numpy.linalg import lstsq
+import matplotlib.pyplot as plt
+import matplotlib
 import numpy as np
 from sklearn.linear_model import LinearRegression
 
@@ -78,10 +80,22 @@ class NPS:
             output.append(WS[j].value)
         return output
 
+    def convert_flow(self, data):
+        output = []
+        for i in data:
+            output.append((i*1000*1000)/(850*2*60*60)) # переводим в м3/сек
+        return output
+
+    def convert_pressure(self, data):
+        output = []
+        for i in data:
+            output.append((i*9.8*10000 + 101350)/(850*9.8)) # переводим в м
+        return output
+
     def get_pressure_diff(self):
-        Pin = self.Pin
-        Pout = self.Pout
-        output = [round(x - y, 3) for x, y in zip(Pout, Pin)]
+        Pin = np.array(self.Pin)
+        Pout = np.array(self.Pout)
+        output = Pout - Pin
         return output
 
     def get_pump_count(self):
@@ -150,13 +164,99 @@ class NPS:
             output.append(i[key])
         return output
 
+    def get_cutted_result(self, a, b):
+        output1 = []
+        output2 = []
+        a = np.array(a)
+        mean = a.mean()
+        top = mean*1.2
+        bottom = mean*0.8
+        length = len(a)
+        for i in range(length):
+            if bottom <= a[i] and a[i] <=top:
+                output1.append(a[i])
+                output2.append(b[i])
+        return output1, output2
+
 
 ukhta = NPS('T', 'U', 'W', 'Y')
 
-F = np.array(ukhta.get_filtered_data('flow'))
-F.shape = (len(F), 1)
-dP = np.array(ukhta.get_filtered_data('dP'))
 
-cln = LinearRegression()
-cln.fit(F, dP)
-print(cln.coef_)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# sindor = NPS('AD', 'AE', 'AG', 'AI')
+#mikun = NPS('AN', 'AO', 'AQ', 'AS')
+# urdoma = NPS('AX', 'AO', 'BA', 'BC')
+
+#F = np.array(ukhta.get_filtered_data('flow'))
+#F.shape = (len(F), 1)
+#dP = np.array(ukhta.get_filtered_data('dP'))
+#E = np.ones(len(F))
+
+# cln = LinearRegression()
+# cln.fit(F, dP)
+# print(cln.coef_)
+# A = [E, F, E, F]
+
+#print(lstsq(F, dP))
+
+# a = np.array(ukhta.convert_pressure(ukhta.get_filtered_data('dP')))
+# b = np.array(ukhta.convert_flow(ukhta.get_filtered_data('flow')))
+# a, b = ukhta.get_cutted_result(a,b)
+#
+#
+# c = sindor.convert_pressure(sindor.get_filtered_data('dP'))
+# d = sindor.convert_flow(sindor.get_filtered_data('flow'))
+#
+# e = mikun.convert_pressure(mikun.get_filtered_data('dP'))
+# f = mikun.convert_flow(mikun.get_filtered_data('flow'))
+#
+# g = urdoma.convert_pressure(urdoma.get_filtered_data('dP'))
+# h = urdoma.convert_flow(urdoma.get_filtered_data('flow'))
+
+# b = np.array(b)
+# a = np.array(a)
+# b.shape = (len(b), 1)
+# cln = LinearRegression()
+# cln.fit(b,a)
+# plt.scatter(b,a)
+#
+# plt.xlabel('Q, м3/с')
+# plt.ylabel('H, м')
+# plt.plot(b, cln.predict(b))
+
+# data = (a - cln.predict(b))*100/cln.predict(b)
+# plt.figure(2)
+# plt.xlabel('Отклонение в %')
+# plt.ylabel('Количество')
+# plt.hist(data)
+#
+# matplotlib.rcParams.update({'font.size': 30})
+# plt.show()
