@@ -36,37 +36,58 @@ class NPS:
         self.Pout = self.get_pressure(Pout_col)
         self.flow = self.get_data(FLOW_COL)
         self.mode = self.get_data(MODE_COL)
-        self.dP = self.get_pressure_diff()
+        # self.dP = self.get_pressure_diff()
+
     # bad
     def get_pump(self, col):
         row_col = [col + str(i) for i in ROWS]
-        output = []
-        for j in row_col:
+        row_col_values = [WS[i].value for i in row_col]
+        data = [i.split(',') for i in row_col_values]
+        for i in data:
             u = [0, 0, 0, 0]
-            data = WS[j].value
-            if type(data) is str:
-                data = data.split(',')
-                data = [int(x) for x in data]
-            elif type(data) is int:
-                data = [data]
-            for i in data:
-                u[i - 1] = 1
-            output.append(u)
-        return output
+
+        # output = []
+        # for j in row_col:
+        #     u = [0, 0, 0, 0]
+        #     data = WS[j].value
+        #     if type(data) is str:
+        #         data = data.split(',')
+        #         data = [int(x) for x in data]
+        #     elif type(data) is int:
+        #         data = [data]
+        #     for i in data:
+        #         u[i - 1] = 1
+        #     output.append(u)
+        return data
 
     # bad
     def get_pressure(self, col):
         row_col = [col + str(i) for i in ROWS]
-        output = []
-        for j in row_col:
-            data = WS[j].value
-            data = data.replace(',', '.')
-            data = data.split('/')
-            data = [float(x) for x in data]
-            res = (max(data) + min(data))/len(data)
-            res = round(res, 3)
-            output.append(res)
+        output = [WS[i].value for i in row_col]
         return output
+        # output = []
+        # for j in row_col:
+        #     data = WS[j].value
+        #     data = data.replace(',', '.')
+        #     data = data.split('/')
+        #     data = [float(x) for x in data]
+        #     res = (max(data) + min(data))/len(data)
+        #     res = round(res, 3)
+        #     output.append(res)
+        # return output
+
+
+    # ok
+    def get_list(self, data):
+        output = [i.replace(',','.') for i in data]
+        output = [i.split('/') for i in output]
+        return output
+
+    # ok
+    def get_mean(self, data):
+        output = [[print(j) for j in i] for i in data]
+        return output
+
 
     # ok
     def get_data(self, col):
@@ -179,4 +200,5 @@ class NPS:
 
 
 ukhta = NPS('T', 'U', 'W', 'Y')
-print(ukhta.get_pressure_diff())
+data = ukhta.get_list(ukhta.Pin)
+print(ukhta.get_mean(data))
