@@ -58,4 +58,6 @@ target/
 
 data.xlsm
 ~$data.xlsm
+data.xlsx
+~$data.xlsx
 .idea/*
