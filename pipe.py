@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import numpy as np
 from openpyxl import load_workbook
 
@@ -6,7 +5,6 @@ from helper import Data
 
 wb = load_workbook(filename='data.xlsx', read_only=True)
 ws = wb.active
-
 
 MODE_COL = 'E'
 FLOW_COL = 'K'
@@ -17,12 +15,12 @@ WS = ws
 
 
 # main classes
-class Linear():
-    def __init__(self, input: np.array, output: np.array, flow: np.array):
-        self.input = input
-        self.output = output
+class Linear:
+    def __init__(self, inp: np.array, out: np.array, flow: np.array):
+        self.inp = inp
+        self.out = out
         self.flow = flow
-        self.diff = input - output
+        self.diff = inp - out
 
 
 flow = Data('K', RANGE, ws)
@@ -35,4 +33,3 @@ flow = Data('K', RANGE, ws)
 #
 #
 # us = Linear(ukhta_pressure, sindor_pressure, flow)
-

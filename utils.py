@@ -1,27 +1,28 @@
 import numpy as np
 
-def split_comma(input: str) -> list: # разделяет по запятым в массив
-    if type(input) is not str:
-        return input
-    return [int(item) for item in input.split(',')]
+
+def split_comma(inp: str) -> list:  # разделяет по запятым в массив
+    if type(inp) is not str:
+        return inp
+    return [int(item) for item in inp.split(',')]
 
 
-def split_slash(input: str) -> list: # разделяет по / в массив
-    return [float(item) for item in input.split('/')]
+def split_slash(inp: str) -> list:  # разделяет по / в массив
+    return [float(item) for item in inp.split('/')]
 
 
-def replace_comma(input: str) -> str: # заменяет , на .
-    return input.replace(',', '.')
+def replace_comma(inp: str) -> str:  # заменяет , на .
+    return inp.replace(',', '.')
 
 
-def get_mean(input: list) -> float: # считает среднее
-    return np.mean(input)
+def get_mean(inp: list) -> float:  # считает среднее
+    return np.mean(inp)
 
 
-def is_letters(input: str) -> bool: # проверка на строку из букв
-    return input.strip().isalpha()
+def is_letters(inp: str) -> bool:  # проверка на строку из букв
+    return inp.strip().isalpha()
 
 
-def get_range(input: range, ws) -> list: # возвращает массив номеров строк для данных
+def get_range(inp: range, ws) -> list:  # возвращает массив номеров строк для данных
     output = [ws[item].value for item in input if not is_letters()]
     return list
