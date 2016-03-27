@@ -1,35 +1,31 @@
+import matplotlib.pyplot as plt
 import numpy as np
-from openpyxl import load_workbook
+import locale
+from sklearn.linear_model import LinearRegression
 
 from helper import Data
 
-wb = load_workbook(filename='data.xlsx', read_only=True)
-ws = wb.active
-
-MODE_COL = 'E'
-FLOW_COL = 'K'
-NAME_ROW = 6
-START_ROW = 9
-FINISH_ROW = 101
-WS = ws
+locale.setlocale(locale.LC_ALL, 'ru_RU.UTF-8')
 
 
 # main classes
 class Linear:
-    def __init__(self, inp: np.array, out: np.array, flow: np.array):
-        self.inp = inp
-        self.out = out
-        self.flow = flow
-        self.diff = inp - out
+    def __init__(self, inp: str, out: str, flow: str):
+        self.inp = Data(inp).get_pressure()
+        self.out = Data(out).get_pressure()
+        self.flow = Data(flow).get_flow()[:, np.newaxis]
+        self.diff = self.inp - self.out
+
+    def get_predict(self):
+        regr = LinearRegression()
+        regr.fit(self.flow, self.diff)
+        return regr.predict(self.flow)
 
 
-flow = Data('K', RANGE, ws)
+us = Linear('Y', 'AG', 'K')
 
-# ukhta_pumps = Data('U', RANGE)
-# ukhta_pressure = Data('Y', RANGE).get_pressure()
-#
-# sindor_pumps = Data('AE', RANGE)
-# sindor_pressure = Data('AG', RANGE).get_pressure()
-#
-#
-# us = Linear(ukhta_pressure, sindor_pressure, flow)
+plt.scatter(us.flow, us.diff, s=50)  # исходные точки
+plt.plot(us.flow, us.get_predict())  # линейная регрессия
+plt.title('Ukhta - Sindor')
+
+plt.show()

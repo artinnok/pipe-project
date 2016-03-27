@@ -20,9 +20,14 @@ def get_mean(inp: list) -> float:  # считает среднее
 
 
 def is_letters(inp: str) -> bool:  # проверка на строку из букв
-    return inp.strip().isalpha()
+    if type(inp) is str:
+        return inp.strip().isalpha()
 
 
-def get_range(inp: range, ws) -> list:  # возвращает массив номеров строк для данных
-    output = [ws[item].value for item in input if not is_letters()]
-    return list
+def get_rows(inp: range, ws) -> list:  # возвращает массив номеров строк для данных
+    out = []
+    for row in inp:
+        val = ws['E' + str(row)].value
+        if val is not None and not is_letters(val):
+            out.append(row)
+    return out
