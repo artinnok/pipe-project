@@ -48,7 +48,7 @@ class NPS:
         }
         return out
 
-    def get_flow_diff_of_pump(self, pump: int):  # напор и разница давления одного насоса
+    def get_flow_diff_of_pump(self, pump: int):  # напор и разница давлений одного насоса
         flow, diff = [], []
         for index, item in enumerate(self.pump):
             if pump in item:
@@ -76,9 +76,9 @@ class NPS:
             if item == mode:
                 flow.append(self.flow[index])
                 diff.append(self.diff[index])
-        return [flow, diff]
+        return flow, diff
 
-    def show_modes(self):
+    def show_modes(self):  # рисуем графики для уникальных режимов
         modes = self.get_unique_modes()
         for index, item in enumerate(modes):
             flow, diff = self.get_flow_diff_of_mode(item)
@@ -86,7 +86,6 @@ class NPS:
             plt.scatter(flow, diff)
             plt.title('Режим ' + str(item))
         plt.show()
-
 
 us = Linear('Y', 'AG', 'K')
 
