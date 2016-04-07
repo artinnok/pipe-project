@@ -1,8 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.linear_model import LinearRegression, RANSACRegressor
 
-from helper import Data
+from helper import Data, Handler
 
 
 # cyrillic support
@@ -18,16 +17,6 @@ class Linear:
         self.flow = Data(flow).get_flow()[:, np.newaxis]
         self.diff = self.inp - self.out
 
-    def linear_predict(self):
-        regression = LinearRegression()
-        regression.fit(self.flow, self.diff)
-        return regression.predict(self.flow)
-
-    def ransac_predict(self):
-        ransac = RANSACRegressor(LinearRegression())
-        ransac.fit(self.flow, self.diff)
-        return ransac.predict(self.flow)
-
 
 class NPS:
     def __init__(self, inp: str, out: str, flow: str, pump: str):
@@ -36,26 +25,6 @@ class NPS:
         self.flow = Data(flow).get_flow()[:, np.newaxis]
         self.diff = self.out - self.inp
         self.pump = Data(pump).get_pump()
-
-    @staticmethod
-    def linear_predict(x, y):  # линейная регрессия
-        regr = LinearRegression()
-        regr.fit(x, y)
-        return regr.predict(x)
-
-    @staticmethod
-    def ransac_predict(x, y):
-        ransac = RANSACRegressor(LinearRegression())
-        ransac.fit(x, y)
-        return ransac.predict(x)
-
-    @staticmethod
-    def ransac_mask(x, y):
-        ransac = RANSACRegressor(LinearRegression())
-        ransac.fit(x, y)
-        in_mask = ransac.inlier_mask_
-        out_mask = np.logical_not(in_mask)
-        return in_mask, out_mask
 
     def get_pump_count(self) -> dict:  # {1: 4, 2: 0, 3: 21, 4: 7}, {насос: сколько раз встречается}
         inp = []
@@ -96,7 +65,7 @@ class NPS:
             if item == mode:
                 flow.append(self.flow[index])
                 diff.append(self.diff[index])
-        return flow, diff
+        return np.array(flow), np.array(diff)
 
     def show_modes(self):  # рисуем графики для уникальных режимов
         modes = self.get_unique_modes()
@@ -112,20 +81,28 @@ us = Linear('Y', 'AG', 'K')
 ukhta = NPS('W', 'Y', 'K', 'U')
 sindor = NPS('AG', 'AI', 'K', 'AE')
 
-x, y = ukhta.get_flow_diff_of_mode([1, 3])
-plt.scatter(x, y, s=50)  # исходные точки
-in_mask, out_mask = ukhta.ransac_mask(x, y)
-x = np.array(x)
-y = np.array(y)
-plt.plot(x[in_mask], y[in_mask], '.g')
-plt.plot(x[out_mask], y[out_mask], '.r', label='Выбросы')
-plt.plot(x, ukhta.linear_predict(x, y), label='Линейная регрессия')  # линейная регрессия
-plt.plot(x, ukhta.ransac_predict(x, y), label='RANSAC')  # ransac регрессия
+handler = Handler()
 
-plt.title('НПС Ухта режим [1,3]')
+# ухта
+X, Y = Handler.get_inliers(ukhta.flow, ukhta.diff)
+
+plt.scatter(X, Y, s=50, c='r')
+plt.plot(X, Handler.linear_predict(X, Y), label='Линейная регрессия после фильтрации')  # линейная регрессия
+
+plt.title('НПС Ухта')
 plt.legend(loc='lower right')
 plt.xlabel('Q, м3/с')
 plt.ylabel('H, м')
 
+# синдор
+X, Y = Handler.get_inliers(sindor.flow, sindor.diff)
+
+plt.scatter(X, Y, s=50, c='r')
+plt.plot(X, Handler.linear_predict(X, Y), label='Линейная регрессия после фильтрации')  # линейная регрессия
+
+plt.title('НПС Синдор')
+plt.legend(loc='lower right')
+plt.xlabel('Q, м3/с')
+plt.ylabel('H, м')
 
 plt.show()

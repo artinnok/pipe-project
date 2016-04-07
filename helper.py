@@ -1,5 +1,6 @@
 import numpy as np
 from openpyxl import load_workbook
+from sklearn.linear_model import LinearRegression, RANSACRegressor
 
 from utils import replace_comma, split_comma, split_slash, get_mean, get_rows
 
@@ -38,3 +39,39 @@ class Data:
         out = self.get_values()
         out = [(item * 1000 * 1000) / (850 * 2 * 60 * 60) for item in out]  # переводим в м3/сек
         return np.array(out)
+
+
+class Handler:
+    @classmethod
+    def linear_predict(cls, x, y):  # линейная регрессия
+        regr = LinearRegression()
+        regr.fit(x, y)
+        return regr.predict(x)
+
+    @classmethod
+    def get_ransac(cls, x, y):  # RANSAC регрессор
+        ransac = RANSACRegressor(LinearRegression(), residual_threshold=5)
+        ransac.fit(x, y)
+        return ransac
+
+    @classmethod
+    def ransac_predict(cls, x, y):
+        ransac = cls.get_ransac(x, y)
+        return ransac.predict(x)
+
+    @classmethod
+    def ransac_mask(cls, x, y):
+        ransac = cls.get_ransac(x, y)
+        in_mask = ransac.inlier_mask_
+        out_mask = np.logical_not(in_mask)
+        return in_mask, out_mask
+
+    @classmethod
+    def get_inliers(cls, x, y):
+        in_mask, out_mask = cls.ransac_mask(x, y)
+        return x[in_mask], y[in_mask]
+
+    @classmethod
+    def get_outliers(cls, x, y):
+        in_mask, out_mask = cls.ransac_mask(x, y)
+        return x[out_mask], y[out_mask]
