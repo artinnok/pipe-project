@@ -5,10 +5,10 @@ from sklearn.linear_model import LinearRegression, RANSACRegressor
 from utils import replace_comma, split_comma, split_slash, get_mean, get_rows
 
 
-WB = load_workbook(filename='data.xlsx', read_only=True)
+WB = load_workbook(filename='input.xlsx', read_only=True)
 WS = WB.active
 
-RANGE = range(9, 101)
+RANGE = range(3, 49)
 ROWS = get_rows(RANGE, WS)
 
 

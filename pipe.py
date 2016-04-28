@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.linear_model import LinearRegression
 
 from helper import Data, Handler
 
@@ -76,33 +77,42 @@ class NPS:
             plt.title('Режим ' + str(item))
         plt.show()
 
-us = Linear('Y', 'AG', 'K')
+    def show(self, title):
+        x, y = Handler.get_inliers(self.flow, self.diff)
+        plt.scatter(x, y, s=50)
+        plt.plot(x, Handler.linear_predict(x, y))
+        plt.title(title)
+        plt.xlabel('Q, м3/с')
+        plt.ylabel('H, м')
+        plt.show()
 
-ukhta = NPS('W', 'Y', 'K', 'U')
-sindor = NPS('AG', 'AI', 'K', 'AE')
+Q = Data('A').get_flow()
+Pn = Data('C').get_pressure()
+Pk = Data('P').get_pressure()
 
-handler = Handler()
+Q_out = []
+Pn_out = []
+Pk_out = []
+P1_out = []
+X = []
 
-# ухта
-X, Y = Handler.get_inliers(ukhta.flow, ukhta.diff)
+P1 = Data('E').get_pressure()
+P2 = Data('F').get_pressure()
 
-plt.scatter(X, Y, s=50, c='r')
-plt.plot(X, Handler.linear_predict(X, Y), label='Линейная регрессия после фильтрации')  # линейная регрессия
+for index, item in enumerate(Q):
+    if 0.645 <= item <= 0.675:
+        Q_out.append(item)
+        Pn_out.append(Pn[index])
+        Pk_out.append(Pk[index])
+        P1_out.append(P1[index])
 
-plt.title('НПС Ухта')
-plt.legend(loc='lower right')
-plt.xlabel('Q, м3/с')
-plt.ylabel('H, м')
+clf = LinearRegression()
+for index, item in enumerate(Q_out):
+    X.append([item, Pn_out[index], Pk_out[index]])
+X = np.array(X)
 
-# синдор
-X, Y = Handler.get_inliers(sindor.flow, sindor.diff)
+clf.fit(X, P1_out)
 
-plt.scatter(X, Y, s=50, c='r')
-plt.plot(X, Handler.linear_predict(X, Y), label='Линейная регрессия после фильтрации')  # линейная регрессия
-
-plt.title('НПС Синдор')
-plt.legend(loc='lower right')
-plt.xlabel('Q, м3/с')
-plt.ylabel('H, м')
-
+plt.scatter(Q_out, P1_out, )
+plt.scatter(Q_out, clf.predict(X), c='r')
 plt.show()
