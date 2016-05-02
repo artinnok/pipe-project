@@ -9,6 +9,9 @@ from helper import Data, Handler
 font = {'family': 'Verdana', 'weight': 'normal'}
 plt.rc('font', **font)
 
+PUMPS_ROWS = ['B', 'D', 'G', 'J', 'M']
+PIN_ROWS = ['E', 'H', 'K', 'N', 'P']
+POUT_ROWS = ['C', 'F', 'I', 'L', 'O']
 
 # main classes
 class Linear:
@@ -86,33 +89,11 @@ class NPS:
         plt.ylabel('H, м')
         plt.show()
 
-Q = Data('A').get_flow()
-Pn = Data('C').get_pressure()
-Pk = Data('P').get_pressure()
+flow = Data('A').get_flow()
 
-Q_out = []
-Pn_out = []
-Pk_out = []
-P1_out = []
-X = []
-
-P1 = Data('E').get_pressure()
-P2 = Data('F').get_pressure()
-
-for index, item in enumerate(Q):
-    if 0.645 <= item <= 0.675:
-        Q_out.append(item)
-        Pn_out.append(Pn[index])
-        Pk_out.append(Pk[index])
-        P1_out.append(P1[index])
-
-clf = LinearRegression()
-for index, item in enumerate(Q_out):
-    X.append([item, Pn_out[index], Pk_out[index]])
-X = np.array(X)
-
-clf.fit(X, P1_out)
-
-plt.scatter(Q_out, P1_out, )
-plt.scatter(Q_out, clf.predict(X), c='r')
-plt.show()
+pumps = [Data(i).get_values() for i in PUMPS_ROWS]
+modes = list(zip(*pumps))
+pin = [Data(i).get_pressure() for i in PIN_ROWS]
+pressure_in = list(zip(*pin))
+pout = [Data(i).get_pressure() for i in POUT_ROWS]
+pressure_out = list(zip(*pout))

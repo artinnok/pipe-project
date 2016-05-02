@@ -2,8 +2,6 @@ import numpy as np
 
 
 def split_comma(inp: str) -> list:  # разделяет по запятым в массив
-    if type(inp) is not str:
-        return inp
     return [int(item) for item in inp.split(',')]
 
 
