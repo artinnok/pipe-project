@@ -89,11 +89,46 @@ class NPS:
         plt.ylabel('H, м')
         plt.show()
 
-flow = Data('A').get_flow()
 
-pumps = [Data(i).get_values() for i in PUMPS_ROWS]
-modes = list(zip(*pumps))
-pin = [Data(i).get_pressure() for i in PIN_ROWS]
-pressure_in = list(zip(*pin))
-pout = [Data(i).get_pressure() for i in POUT_ROWS]
-pressure_out = list(zip(*pout))
+def get_map(modes):
+    mapping = []
+    out = []
+    unique_modes = set(modes)
+    for item in unique_modes:
+        mapping.append(item)
+    for item in modes:
+        index = mapping.index(item)
+        out.append(index)
+    return out
+
+flow = Data('A').get_flow()[3:16]
+ukhta_pin = Data('E').get_pressure()[3:16]
+ukhta_pout = Data('F').get_pressure()[3:16]
+sindor_pin = Data('H').get_pressure()[3:16]
+sindor_pout = Data('I').get_pressure()[3:16]
+
+pumps = [Data(i).get_values() for i in ['B', 'D', 'G']]
+modes = list(zip(*pumps))[3:16]
+
+modes = get_map(modes)
+
+pressure_start = Data('C').get_pressure()[3:16]
+pressure_end = Data('P').get_pressure()[3:16]
+X = np.array(list(zip(pressure_start, pressure_end, modes)))
+Y = np.array(list(zip(ukhta_pin, ukhta_pout, flow, sindor_pin, sindor_pout)))
+
+regr = LinearRegression()
+regr.fit(X, Y)
+
+Y_predict = regr.predict(X)
+ukhta_pin_predict = Y_predict[:, 0]
+ukhta_pout_predict = Y_predict[:, 1]
+flow_predict = Y_predict[:, 2]
+sindor_pin_predict = Y_predict[:, 3]
+sindor_pout_predict = Y_predict[:, 4]
+# print(ukhta_pin - ukhta_pin_predict)
+# print(ukhta_pout - ukhta_pout_predict)
+# print(flow - flow_predict)
+# print(sindor_pin - sindor_pin_predict)
+print(sindor_pout - sindor_pout_predict)
+print(sindor_pout)
