@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.linear_model import LinearRegression
+import statsmodels.api as sm
 
 from helper import Data, Handler
 
@@ -109,26 +110,31 @@ sindor_pout = Data('I').get_pressure()[3:16]
 
 pumps = [Data(i).get_values() for i in ['B', 'D', 'G']]
 modes = list(zip(*pumps))[3:16]
-
 modes = get_map(modes)
-
 pressure_start = Data('C').get_pressure()[3:16]
 pressure_end = Data('P').get_pressure()[3:16]
-X = np.array(list(zip(pressure_start, pressure_end, modes)))
-Y = np.array(list(zip(ukhta_pin, ukhta_pout, flow, sindor_pin, sindor_pout)))
 
-regr = LinearRegression()
-regr.fit(X, Y)
+ones = np.ones(len(modes))
+X = np.array(list(zip(ones, pressure_start, pressure_end, modes)))
 
-Y_predict = regr.predict(X)
-ukhta_pin_predict = Y_predict[:, 0]
-ukhta_pout_predict = Y_predict[:, 1]
-flow_predict = Y_predict[:, 2]
-sindor_pin_predict = Y_predict[:, 3]
-sindor_pout_predict = Y_predict[:, 4]
-# print(ukhta_pin - ukhta_pin_predict)
-# print(ukhta_pout - ukhta_pout_predict)
-# print(flow - flow_predict)
-# print(sindor_pin - sindor_pin_predict)
-print(sindor_pout - sindor_pout_predict)
-print(sindor_pout)
+# flow
+model_flow = sm.OLS(flow, X)
+res_flow = model_flow.fit()
+flow_predict = res_flow.predict(X)
+# print(res_flow.summary())
+
+# ukhta_pin
+model_ukhta_pin = sm.OLS(ukhta_pin, X)
+res_ukhta_pin = model_ukhta_pin.fit()
+ukhta_pin_predict = res_flow.predict(X)
+# print(res_ukhta_pin.summary())
+
+# ukhta_pout
+model_ukhta_pout = sm.OLS(ukhta_pout, X)
+res_ukhta_pout = model_ukhta_pout.fit()
+ukhta_pout_predict = res_flow.predict(X)
+print(res_ukhta_pout.summary)
+
+# plt.scatter(pressure_start, flow, c='r')
+# plt.scatter(pressure_start, flow_predict, c='b')
+# plt.show()
