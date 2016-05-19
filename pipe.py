@@ -11,10 +11,10 @@ font = {'family': 'Verdana', 'weight': 'normal'}
 plt.rc('font', **font)
 
 START = 'C'
-END = 'K'
+END = 'H'
 FLOW = 'A'
-PUMP_ROWS = ['B', 'D', 'G']
-PRESSURE_ROWS = ['E', 'F', 'H', 'I']
+PUMP_ROWS = ['B', 'D']
+PRESSURE_ROWS = ['E', 'F']
 
 
 def mvregress(x, y):
@@ -28,20 +28,30 @@ def mvregress(x, y):
         b = np.dot(b, y)
         return b
 
-start = Data(START).get_pressure()[:16]
-end = Data(END).get_pressure()[:16]
+start = Data('F').get_pressure()
+end = Data('H').get_pressure()
 ones = np.ones(len(start))
 
-flow = Data(FLOW).get_flow()[:16]
-pumps = Data('M').get_pump()[:16]
-p1 = Data('O').get_pressure()[:16]
+flow = Data('A').get_flow()
 
-dp = end - start
-X = np.array([ones, dp])
+X = np.array([ones, flow])
 X = np.transpose(X)
-
-Y = np.array([p1, flow])
+Y = np.array([start, end])
 Y = np.transpose(Y)
-
 B = mvregress(X, Y)
+
+start_predict = 71.38 - 27.81 * flow
+end_predict = 87.43 - 103 * flow
+plt.scatter(flow, start_predict, c='r')
+plt.scatter(flow, start)
+plt.title('Зависимость расход - давление на выходе ПНПС Ухта')
+plt.figure(2)
+plt.scatter(flow, end_predict, c='r')
+plt.scatter(flow, end)
+plt.title('Зависимость расход - давление на входе ПНПС Синдор')
+plt.figure(3)
+plt.scatter(flow, end_predict - start_predict, c='r')
+plt.scatter(flow, end - start)
+plt.title('ЛУ Ухта - Синдор')
+plt.show()
 print(B)
