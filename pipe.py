@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.linear_model import LinearRegression
 import statsmodels.api as sm
+from collections import defaultdict
 
 from helper import Data, Handler
 
@@ -13,8 +14,8 @@ plt.rc('font', **font)
 START = 'C'
 END = 'H'
 FLOW = 'A'
-PUMP_ROWS = ['B', 'D']
-PRESSURE_ROWS = ['E', 'F']
+PUMP_ROWS = ['D', 'G']
+PRESSURE_ROWS = ['E', 'F', 'H', 'I']
 
 
 def mvregress(x, y):
@@ -28,30 +29,38 @@ def mvregress(x, y):
         b = np.dot(b, y)
         return b
 
-start = Data('F').get_pressure()
-end = Data('H').get_pressure()
-ones = np.ones(len(start))
 
+def prepare_pumps(data):
+    res = []
+    for item in data:
+        out = '-'
+        res.append(out.join(item))
+    return res
+
+
+def join(modes, pressure):
+    d = defaultdict(list)
+    for index, item in enumerate(modes):
+        d[item].append(pressure[index])
+    for key, value in d.items():
+        d[key] = np.array(value)
+    return d
+
+pumps = np.array([Data(item).get_values() for item in PUMP_ROWS])
+pumps = np.transpose(pumps)
+pressure = np.array([Data(item).get_pressure() for item in PRESSURE_ROWS])
+pressure = np.transpose(pressure)
+
+modes = prepare_pumps(pumps)
+test = join(modes, pressure)
+
+inp = Data('E').get_pressure()
+out = Data('F').get_pressure()
 flow = Data('A').get_flow()
 
-X = np.array([ones, flow])
-X = np.transpose(X)
-Y = np.array([start, end])
-Y = np.transpose(Y)
-B = mvregress(X, Y)
-
-start_predict = 71.38 - 27.81 * flow
-end_predict = 87.43 - 103 * flow
-plt.scatter(flow, start_predict, c='r')
-plt.scatter(flow, start)
-plt.title('Зависимость расход - давление на выходе ПНПС Ухта')
+plt.scatter(flow, inp)
 plt.figure(2)
-plt.scatter(flow, end_predict, c='r')
-plt.scatter(flow, end)
-plt.title('Зависимость расход - давление на входе ПНПС Синдор')
-plt.figure(3)
-plt.scatter(flow, end_predict - start_predict, c='r')
-plt.scatter(flow, end - start)
-plt.title('ЛУ Ухта - Синдор')
+plt.scatter(flow, out)
+plt.figure()
+plt.scatter(flow, out - inp)
 plt.show()
-print(B)
