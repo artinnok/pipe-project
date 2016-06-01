@@ -15,10 +15,9 @@ P1 = 2 * 10 ** 5
 PN = 10 ** 5
 B1 = 10 ** (-3)
 B0 = 0
-N = 4
+H = 10 ** (-6)
 
-np.set_printoptions(precision=3)
-np.set_printoptions(suppress=True)
+np.set_printoptions(precision=6, suppress=True, linewidth=150)
 
 
 def get_b(n):
@@ -71,17 +70,16 @@ def crutch(b, a):
 
 
 class Solver:
-    def __init__(self, b):
-        self.b = b
-        self.b0 = b[0]
-        self.b1 = b[1]
-        self.N = len(b) + 1
-
-    def solve(self):
+    def get_w(self, b):
+        l = len(b) / 2
+        b0 = b[:l].reshape(l, 1)
+        b1 = b[l:].reshape(l, 1)
+        N = int(l + 1)
         x = np.array([P1, PN])
         x = x.reshape(len(x), 1)
 
-        a2t = get_a2(self.N)
+        a2t = get_a2(N)
+
         # костыль
         a2t = crutch(b1, a2t)
 
@@ -91,48 +89,35 @@ class Solver:
         zeros = zeros.reshape(len(zeros), 1)
 
         # костыль
-        ones = np.ones(len(self.b1))
+        ones = np.ones(len(b1))
         ones = ones.reshape(len(ones), 1)
 
         # должно быть b1 вместо ones
         top = np.append(ones, a2t, 1)
         bottom = np.append(zeros, a1t, 1)
-
-        D = np.append(top, bottom, 0)
+        d = np.append(top, bottom, 0)
         g = np.append(b0, x, 0)
 
-        Dinv = np.linalg.inv(D)
-        w = np.dot(Dinv, g)
+        dinv = np.linalg.inv(d)
+        w = np.dot(dinv, g)
+        return w
 
-b1 = get_b1(N)
-b1 = b1.reshape(len(b1), 1)
+    def get_jacobian(self, b):
+        out = []
+        for index__i, item_i in enumerate(b):
+            copy_b = np.array(b, copy=True)
+            copy_b[index__i] += H
+            w_mod = self.get_w(copy_b)
+            w = self.get_w(b)
+            e = w_mod - w
+            e /= H
+            out.append(e)
+        return np.array(out)
 
-b0 = get_b0(N)
-b0 = b0.reshape((len(b0), 1))
 
-x = np.array([P1, PN])
-x = x.reshape(len(x), 1)
-
-a2t = get_a2(N)
-# костыль
-a2t = crutch(b1, a2t)
-
-a1t = get_a1(N)
-
-zeros = np.array([0, 0])
-zeros = zeros.reshape(len(zeros), 1)
-
-# костыль
-ones = np.ones(len(b1))
-ones = ones.reshape(len(ones), 1)
-
-# должно быть b1 вместо ones
-top = np.append(ones, a2t, 1)
-bottom = np.append(zeros, a1t, 1)
-
-D = np.append(top, bottom, 0)
-g = np.append(b0, x, 0)
-
-Dinv = np.linalg.inv(D)
-w = np.dot(Dinv, g)
-print(w)
+b = np.array([B0, B0, B0, B1, B1, B1])
+s = Solver()
+jacobian = s.get_jacobian(b)
+jacobian = np.transpose(jacobian)
+a, b, c = jacobian.shape
+print(jacobian.reshape(b, c))
