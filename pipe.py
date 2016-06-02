@@ -11,8 +11,11 @@ from helper import Data, Handler
 font = {'family': 'Verdana', 'weight': 'normal'}
 plt.rc('font', **font)
 
-P1 = 2 * 10 ** 5
-PN = 10 ** 5
+P11 = 2 * 10 ** 5
+PN1 = 10 ** 5
+P12 = 3 * 10 ** 5
+PN2 = 2 * 10 ** 5
+X = np.array([[P11, PN1], [P12, PN2]])
 B1 = 10 ** (-3)
 B0 = 0
 H = 10 ** (-6)
@@ -69,14 +72,23 @@ def crutch(b, a):
     return np.array(out)
 
 
+def normalize(data):
+    max_value = max(data)
+    min_value = min(data)
+    out = []
+    for item in data:
+        foo = item - min_value
+        foo /= max_value - min_value
+        out.append(foo)
+    return out
+
+
 class Solver:
-    def get_w(self, b):
+    def get_w(self, b, x):
         l = len(b) / 2
         b0 = b[:l].reshape(l, 1)
         b1 = b[l:].reshape(l, 1)
         N = int(l + 1)
-        x = np.array([P1, PN])
-        x = x.reshape(len(x), 1)
 
         a2t = get_a2(N)
 
@@ -102,22 +114,54 @@ class Solver:
         w = np.dot(dinv, g)
         return w
 
-    def get_jacobian(self, b):
+    def get_jacobian(self, b, x):
         out = []
-        for index__i, item_i in enumerate(b):
+
+        for index, item in enumerate(b):
             copy_b = np.array(b, copy=True)
-            copy_b[index__i] += H
-            w_mod = self.get_w(copy_b)
-            w = self.get_w(b)
+            copy_b[index] += H
+            w_mod = self.get_w(copy_b, x)
+            w = self.get_w(b, x)
             e = w_mod - w
             e /= H
             out.append(e)
+
+        return np.array(out)
+
+    def get_ws_jacobians(self, x):
+        ws, jacobians = [], []
+
+        for item in x:
+            item = item.reshape(len(item), 1)
+            ws.append(self.get_w(b, item))
+            jacobians.append((self.get_jacobian(b, item)))
+
+        ws = np.array(ws)
+        jacobians = np.array(jacobians)
+        return ws, jacobians
+
+    def get_delta_b(self, x):
+        ws, jacobians = self.get_ws_jacobians(x)
+        mod = np.array(ws, copy=True)
+        print(jacobians)
+        out = []
+
+        for item in mod:
+            data = np.squeeze(item).T
+            data[0] += 50
+
+        ws = np.squeeze(ws).T
+        mod = np.squeeze(mod).T
+        for index, item in enumerate(jacobians):
+            data = np.squeeze(item).T
+            a = np.dot(data.T, data)
+            ainv = np.linalg.inv(a)
+            test = np.dot(ainv, data.T)
+            e = mod[:, index] - ws[:, index]
+            out.append(np.dot(test, e))
         return np.array(out)
 
 
-b = np.array([B0, B0, B0, B1, B1, B1])
+b = np.array([B0, B1])
 s = Solver()
-jacobian = s.get_jacobian(b)
-jacobian = np.transpose(jacobian)
-a, b, c = jacobian.shape
-print(jacobian.reshape(b, c))
+print(b + s.get_delta_b(X))
