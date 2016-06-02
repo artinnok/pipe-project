@@ -27,7 +27,8 @@ class Data:
         out = [replace_comma(item) for item in out]
         out = [split_slash(item) for item in out]
         out = [get_mean(item) for item in out]
-        out = [(item * 9.8 * 10000 + 101350) / (850 * 9.8) for item in out]  # переводим в м
+        # переводим в м
+        out = [(item * 9.8 * 10000 + 101350) / (850 * 9.8) for item in out]
         return np.array(out)
 
     def get_pump(self):
@@ -37,41 +38,84 @@ class Data:
 
     def get_flow(self):
         out = self.get_values()
-        out = [(item * 1000 * 1000) / (850 * 2 * 60 * 60) for item in out]  # переводим в м3/сек
+        # переводим в м3/сек
+        out = [(item * 1000 * 1000) / (850 * 2 * 60 * 60) for item in out]
         return np.array(out)
 
 
-class Handler:
-    @classmethod
-    def linear_predict(cls, x, y):  # линейная регрессия
-        regr = LinearRegression()
-        regr.fit(x, y)
-        return regr.predict(x)
+# регрессия
+def linear_predict(x, y):  # линейная регрессия
+    regr = LinearRegression()
+    regr.fit(x, y)
+    return regr.predict(x)
 
-    @classmethod
-    def get_ransac(cls, x, y):  # RANSAC регрессор
-        ransac = RANSACRegressor(LinearRegression(), residual_threshold=5)
-        ransac.fit(x, y)
-        return ransac
 
-    @classmethod
-    def ransac_predict(cls, x, y):
-        ransac = cls.get_ransac(x, y)
-        return ransac.predict(x)
+def get_ransac(x, y):  # RANSAC регрессор
+    ransac = RANSACRegressor(LinearRegression(), residual_threshold=5)
+    ransac.fit(x, y)
+    return ransac
 
-    @classmethod
-    def ransac_mask(cls, x, y):
-        ransac = cls.get_ransac(x, y)
-        in_mask = ransac.inlier_mask_
-        out_mask = np.logical_not(in_mask)
-        return in_mask, out_mask
 
-    @classmethod
-    def get_inliers(cls, x, y):
-        in_mask, out_mask = cls.ransac_mask(x, y)
-        return x[in_mask], y[in_mask]
+def ransac_predict(x, y):
+    ransac = get_ransac(x, y)
+    return ransac.predict(x)
 
-    @classmethod
-    def get_outliers(cls, x, y):
-        in_mask, out_mask = cls.ransac_mask(x, y)
-        return x[out_mask], y[out_mask]
+
+def ransac_mask(x, y):
+    ransac = get_ransac(x, y)
+    in_mask = ransac.inlier_mask_
+    out_mask = np.logical_not(in_mask)
+    return in_mask, out_mask
+
+
+def get_inliers(x, y):
+    in_mask, out_mask = ransac_mask(x, y)
+    return x[in_mask], y[in_mask]
+
+
+def get_outliers(cls, x, y):
+    in_mask, out_mask = ransac_mask(x, y)
+    return x[out_mask], y[out_mask]
+
+
+# матрицы
+def get_a2(n):
+    a2 = []
+    for i in range(n - 1):
+        y = []
+        for j in range(n):
+            if j == i:
+                y.append(-1)
+            elif j == i + 1:
+                y.append(1)
+            else:
+                y.append(0)
+        a2.append(y)
+    return np.array(a2)
+
+
+def get_a1(n):
+    first = np.zeros(n)
+    first[0] = 1
+    last = np.zeros(n)
+    last[-1] = -1
+    a1 = np.array([first, last])
+    return a1
+
+
+def crutch(b, a):
+    out = []
+    for index, item in enumerate(b):
+        out.append(a[index] * item)
+    return np.array(out)
+
+
+def normalize(data):
+    max_value = max(data)
+    min_value = min(data)
+    out = []
+    for item in data:
+        foo = item - min_value
+        foo /= max_value - min_value
+        out.append(foo)
+    return out
