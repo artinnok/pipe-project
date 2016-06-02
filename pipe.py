@@ -1,10 +1,14 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import helper
+from math import sqrt
 
 # поддержка кириллицы
 font = {'family': 'Verdana', 'weight': 'normal'}
 plt.rc('font', **font)
+
+# установка формата вывода
+np.set_printoptions(precision=6, suppress=True, linewidth=150)
 
 P11 = 2 * 10 ** 5
 PN1 = 10 ** 5
@@ -14,11 +18,10 @@ X = np.array([[[P11], [PN1]], [[P12], [PN2]]])
 
 B1 = 10 ** (-3)
 B0 = 0
-B = np.array([[B0], [B0], [B1], [B1]])
+B = np.array([[B0], [B1]])
 
 H = 10 ** (-6)
-
-np.set_printoptions(precision=6, suppress=True, linewidth=150)
+E = 0.05
 
 
 class Solver:
@@ -96,7 +99,7 @@ class Solver:
         )
         return ws, jacobians
 
-    def get_delta_b(self, b, x):
+    def get_delta_b(self, y, b, x):
         """
         Вернет оценку дельта b
         :param b:
@@ -104,14 +107,31 @@ class Solver:
         :return:
         """
         ws, jacobians = self.get_ws_jacobians(b, x)
-        y = np.array(ws, copy=True)
-        y += 50
-
         a = np.dot(jacobians.T, jacobians)
         ainv = np.linalg.inv(a)
         delta_b = np.dot(ainv, jacobians.T)
         e = y - ws
         delta_b = np.dot(delta_b, e)
+        return delta_b
+
+    def get_some_value(self, delta):
+        squares = map(lambda x: x * x, delta)
+        squares_sum = sum(list(squares))
+        return sqrt(squares_sum) / len(delta)
+
 
 s = Solver()
-s.get_delta_b(B, X)
+y, yy = s.get_ws_jacobians(B, X)
+y[0, 0] += 50
+delta_B = s.get_delta_b(y, B, X)
+delta = delta_B
+B = B + delta_B
+some_value = s.get_some_value(delta)
+
+while some_value > E:
+    delta_B = s.get_delta_b(y, B, X)
+    delta = np.append(delta, delta_B, axis=0)
+    B = B + delta_B
+    some_value = s.get_some_value(delta)
+
+print(B)
