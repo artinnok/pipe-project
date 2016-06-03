@@ -11,6 +11,9 @@ WS = WB.active
 RANGE = range(3, 49)
 ROWS = get_rows(RANGE, WS)
 
+P_SIGMA = 3000
+Q_SIGMA = 5
+
 
 class Data:
     def __init__(self, col: str):
@@ -98,7 +101,7 @@ def get_a1(n):
     first = np.zeros(n)
     first[0] = 1
     last = np.zeros(n)
-    last[-1] = -1
+    last[-1] = 1
     a1 = np.array([first, last])
     return a1
 
@@ -118,4 +121,20 @@ def normalize(data):
         foo = item - min_value
         foo /= max_value - min_value
         out.append(foo)
+    return out
+
+
+def generate(data, theta):
+    copy = np.array(data, copy=True)
+    l = int(len(theta) / 2 + 2)
+    copy[::l] += np.random.normal(0, Q_SIGMA, copy.shape)[::l]
+    for item in range(2, l - 1):
+        copy[item::l] += np.random.normal(0, P_SIGMA, copy.shape)[item::l]
+    return copy
+
+
+def mass_generate(count, data, theta):
+    l = int(len(theta) / 2 + 2)
+    out = np.concatenate(
+        [generate(data, theta) for item in range(count)], axis=0)
     return out
