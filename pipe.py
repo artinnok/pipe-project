@@ -14,11 +14,16 @@ P11 = 2 * 10 ** 5
 PN1 = 1 * 10 ** 5
 P12 = 3 * 10 ** 5
 PN2 = 1 * 10 ** 5
-X = np.array([[[P11], [PN1]], [[P12], [PN2]]])
-# X = np.array([[P11], [PN1]])
+X = np.array([
+    [[P11], [PN1]]
+])
+
 B1 = 10 ** (-3)
 B0 = 0
-THETA = np.array([[B0], [B0], [B1], [B1]])
+THETA = np.array([
+    [B0],
+    [B1]
+])
 
 h = 10 ** (-6)
 E = 0.05
@@ -121,15 +126,10 @@ class Solver:
         delta_theta = np.dot(Ainv, H.T)
         e = y - v
         delta_theta = np.dot(delta_theta, e)
-        if globals().get('errors') is not None:
-            globals()['errors'] = np.append(globals().get('errors'), e, axis=1)
-        else:
-            globals()['errors'] = e
         return delta_theta
 
     def weight(self, theta, x):
-        l = len(theta) / 2
-        l += 2
+        l = len(theta) / 2 + 2
         w = np.ones(l)
         w[0] = 1000
 
@@ -138,13 +138,14 @@ class Solver:
         W = np.diag(W)
         return W
 
-    def get_wls(self, theta, x):
+    def get_wls_theta(self, y, theta, x):
         """
         Взвешенный МНК
         :param theta:
         :param x:
         :return:
         """
+        v = self.solve(theta, x)
         H = self.jacobian(theta, x)
         W = self.weight(theta, x)
         Q = np.dot(W.T, W)
@@ -153,6 +154,8 @@ class Solver:
         Ainv = np.linalg.inv(A)
         delta_theta = np.dot(Ainv, H.T)
         delta_theta = np.dot(delta_theta, Q)
+        e = y - v
+        delta_theta = np.dot(delta_theta, e)
         return delta_theta
 
     def get_some_value(self, data):
@@ -162,22 +165,23 @@ class Solver:
 
 s = Solver()
 F = s.solve(THETA, X)
+print(F)
+"""
 H = s.jacobian(THETA, X)
 
 Y = np.array(F, copy=True)
-Y[0, 0] += 50
-Y[4, 0] += 50
-Y[2, 0] += 15000
-Y[6, 0] += 25000
+ethalon = helper.generate(Y, THETA)
 
-delta_theta = s.delta_theta(Y, THETA, X)
+delta_theta = s.get_wls_theta(ethalon, THETA, X)
 delta = delta_theta
 theta = THETA + delta_theta
 some_value = s.get_some_value(delta)
 
 while some_value > E:
-    delta_theta = s.delta_theta(Y, theta, X)
+    delta_theta = s.get_wls_theta(ethalon, theta, X)
     delta = np.append(delta, delta_theta, axis=0)
     theta = theta + delta_theta
     some_value = s.get_some_value(delta)
-    s.weight(theta, X)
+
+print(theta)
+"""
