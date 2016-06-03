@@ -11,127 +11,137 @@ plt.rc('font', **font)
 np.set_printoptions(precision=6, suppress=True, linewidth=150)
 
 P11 = 2 * 10 ** 5
-PN1 = 10 ** 5
+PN1 = 1 * 10 ** 5
 P12 = 3 * 10 ** 5
 PN2 = 2 * 10 ** 5
-X = np.array([[[P11], [PN1]], [[P12], [PN2]]])
-
-B1 = 10 ** (-3)
-B0 = 0
-B = np.array([[B0], [B1]])
+# X = np.array([[[P11], [PN1]], [[P12], [PN2]]])
+X = np.array([[P11], [PN1]])
+THETA1 = 10 ** (-3)
+THETA0 = 0
+THETA = np.array([[THETA0], [THETA1]])
 
 H = 10 ** (-6)
 E = 0.05
 
 
 class Solver:
-    def get_w(self, b, x):
+    def single_solve(self, theta, x):
         """
         Вернет вектор прогноза
-        :param b:
+        :param theta:
         :param x:
         :return:
         """
-        l = len(b) / 2
-        b0 = b[:l].reshape(l, 1)
-        b1 = b[l:].reshape(l, 1)
+        l = len(theta) / 2
+        theta0 = theta[:l].reshape(l, 1)
+        theta1 = theta[l:].reshape(l, 1)
         n = int(l + 1)
 
         a2t = helper.get_a2(n)
         # костыль
-        a2t = helper.crutch(b1, a2t)
+        a2t = helper.crutch(theta1, a2t)
 
         a1t = helper.get_a1(n)
 
         zeros = np.zeros((2, 1))
         # костыль
-        ones = np.ones((len(b1), 1))
+        ones = np.ones((len(theta1), 1))
 
         # должно быть b1 вместо ones
         top = np.append(ones, a2t, 1)
         bottom = np.append(zeros, a1t, 1)
         d = np.append(top, bottom, 0)
 
-        g = np.append(b0, x, 0)
+        g = np.append(theta0, x, 0)
         dinv = np.linalg.inv(d)
-        w = np.dot(dinv, g)
-        return w
+        f = np.dot(dinv, g)
+        return f
 
-    def get_e(self, b, index, x):
+    def solve(self, theta, x):
+        """
+        Вернет вектор всех прогнозов и вектор из якобианов
+        :param theta:
+        :param x:
+        :return:
+        """
+        f = np.concatenate(
+            [self.single_solve(theta, item) for item in x], axis=0
+        )
+        return f
+
+    def get_e(self, theta, index, x):
         """
         Вернет одно значение якобиана
-        :param b:
+        :param theta:
         :param index:
         :param x:
         :return:
         """
-        copy_b = np.array(b, copy=True)
-        copy_b[index] += H
-        w_mod = self.get_w(copy_b, x)
-        w = self.get_w(b, x)
-        e = w_mod - w
+        copy_theta = np.array(theta, copy=True)
+        copy_theta[index] += H
+        f_mod = self.single_solve(copy_theta, x)
+        f = self.single_solve(theta, x)
+        e = f_mod - f
         e /= H
         return e
 
-    def get_jacobian(self, b, x):
+    def singe_jacobian(self, theta, x):
         """
         Вернет якобиан
-        :param b:
+        :param theta:
         :param x:
         :return:
         """
         out = np.concatenate(
-            [self.get_e(b, index, x) for index, item in enumerate(b)],
+            [self.get_e(theta, index, x) for index, item in enumerate(theta)],
             axis=1
         )
         return out
 
-    def get_ws_jacobians(self, b, x):
-        """
-        Вернет вектор всех прогнозов и вектор из якобианов
-        :param b:
-        :param x:
-        :return:
-        """
-        ws = np.concatenate([self.get_w(b, item) for item in x], axis=0)
+    def jacobian(self, theta, x):
         jacobians = np.concatenate(
-            [self.get_jacobian(b, item) for item in x], axis=0
+            [self.singe_jacobian(theta, item) for item in x], axis=0
         )
-        return ws, jacobians
+        return jacobians
 
-    def get_delta_b(self, y, b, x):
+    def get_delta_theta(self, y, theta, x):
         """
         Вернет оценку дельта b
-        :param b:
+        :param theta:
+        :param y:
         :param x:
         :return:
         """
-        ws, jacobians = self.get_ws_jacobians(b, x)
-        a = np.dot(jacobians.T, jacobians)
+        ws = self.solve(theta, x)
+        jacobian = self.jacobian(theta, x)
+        a = np.dot(jacobian.T, jacobian)
         ainv = np.linalg.inv(a)
-        delta_b = np.dot(ainv, jacobians.T)
+        delta_b = np.dot(ainv, jacobian.T)
         e = y - ws
-        delta_b = np.dot(delta_b, e)
-        return delta_b
+        delta_theta = np.dot(delta_b, e)
+        return delta_theta
 
-    def get_some_value(self, delta):
-        squares = map(lambda x: x * x, delta)
+    def get_some_value(self, data):
+        squares = map(lambda x: x * x, data)
         squares_sum = sum(list(squares))
-        return sqrt(squares_sum) / len(delta)
+        return sqrt(squares_sum) / len(data)
 
 
 s = Solver()
+print(s.single_solve(THETA, X))
+"""
 y, yy = s.get_ws_jacobians(B, X)
+print(y)
 y[0, 0] += 50
 delta_B = s.get_delta_b(y, B, X)
 delta = delta_B
 B = B + delta_B
 some_value = s.get_some_value(delta)
 
+
 while some_value > E:
     delta_B = s.get_delta_b(y, B, X)
     delta = np.append(delta, delta_B, axis=0)
     B = B + delta_B
     some_value = s.get_some_value(delta)
-
-print(B)
+    """
