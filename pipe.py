@@ -13,12 +13,12 @@ np.set_printoptions(precision=6, suppress=True, linewidth=150)
 P11 = 2 * 10 ** 5
 PN1 = 1 * 10 ** 5
 P12 = 3 * 10 ** 5
-PN2 = 2 * 10 ** 5
-# X = np.array([[[P11], [PN1]], [[P12], [PN2]]])
-X = np.array([[P11], [PN1]])
-THETA1 = 10 ** (-3)
-THETA0 = 0
-THETA = np.array([[THETA0], [THETA1]])
+PN2 = 1 * 10 ** 5
+X = np.array([[[P11], [PN1]], [[P12], [PN2]]])
+# X = np.array([[P11], [PN1]])
+B1 = 10 ** (-3)
+B0 = 0
+THETA = np.array([[B0], [B1]])
 
 H = 10 ** (-6)
 E = 0.05
@@ -33,45 +33,40 @@ class Solver:
         :return:
         """
         l = len(theta) / 2
-        theta0 = theta[:l].reshape(l, 1)
-        theta1 = theta[l:].reshape(l, 1)
+        b0 = theta[:l].reshape(l, 1)
+        b1 = theta[l:].reshape(l, 1)
         n = int(l + 1)
 
         a2t = helper.get_a2(n)
-        # костыль
-        a2t = helper.crutch(theta1, a2t)
+        a2t = helper.crutch(-b1, a2t)  # костыль
+        ones = -np.ones((len(b1), 1))  # костыль
+        top = np.append(ones, a2t, 1)
 
         a1t = helper.get_a1(n)
-
         zeros = np.zeros((2, 1))
-        # костыль
-        ones = np.ones((len(theta1), 1))
-
-        # должно быть b1 вместо ones
-        top = np.append(ones, a2t, 1)
         bottom = np.append(zeros, a1t, 1)
-        d = np.append(top, bottom, 0)
 
-        g = np.append(theta0, x, 0)
+        d = np.append(top, bottom, 0)
         dinv = np.linalg.inv(d)
-        f = np.dot(dinv, g)
-        return f
+        u = np.append(-b0, x, 0)
+        w = np.dot(dinv, u)
+        return w
 
     def solve(self, theta, x):
         """
-        Вернет вектор всех прогнозов и вектор из якобианов
+        Вернет вектор всех прогнозов
         :param theta:
         :param x:
         :return:
         """
-        f = np.concatenate(
+        out = np.concatenate(
             [self.single_solve(theta, item) for item in x], axis=0
         )
-        return f
+        return out
 
-    def get_e(self, theta, index, x):
+    def column_of_single_jacobian(self, theta, index, x):
         """
-        Вернет одно значение якобиана
+        Вернет одну колонку якобиана
         :param theta:
         :param index:
         :param x:
@@ -87,26 +82,33 @@ class Solver:
 
     def singe_jacobian(self, theta, x):
         """
-        Вернет якобиан
+        Вернет один якобиан
         :param theta:
         :param x:
         :return:
         """
         out = np.concatenate(
-            [self.get_e(theta, index, x) for index, item in enumerate(theta)],
+            [self.column_of_single_jacobian(theta, index, x)
+             for index, item in enumerate(theta)],
             axis=1
         )
         return out
 
     def jacobian(self, theta, x):
-        jacobians = np.concatenate(
+        """
+        Вернет матрицу якобиана
+        :param theta:
+        :param x:
+        :return:
+        """
+        out = np.concatenate(
             [self.singe_jacobian(theta, item) for item in x], axis=0
         )
-        return jacobians
+        return out
 
-    def get_delta_theta(self, y, theta, x):
+    def delta_theta(self, y, theta, x):
         """
-        Вернет оценку дельта b
+        Вернет оценку дельта тета
         :param theta:
         :param y:
         :param x:
@@ -116,9 +118,9 @@ class Solver:
         jacobian = self.jacobian(theta, x)
         a = np.dot(jacobian.T, jacobian)
         ainv = np.linalg.inv(a)
-        delta_b = np.dot(ainv, jacobian.T)
+        delta_theta = np.dot(ainv, jacobian.T)
         e = y - ws
-        delta_theta = np.dot(delta_b, e)
+        delta_theta = np.dot(delta_theta, e)
         return delta_theta
 
     def get_some_value(self, data):
@@ -128,7 +130,8 @@ class Solver:
 
 
 s = Solver()
-print(s.single_solve(THETA, X))
+print(s.solve(THETA, X))
+
 """
 y, yy = s.get_ws_jacobians(B, X)
 print(y)
