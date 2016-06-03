@@ -14,8 +14,13 @@ P11 = 2 * 10 ** 5
 PN1 = 1 * 10 ** 5
 P12 = 3 * 10 ** 5
 PN2 = 1 * 10 ** 5
+P13 = 1.5 * 10 ** 5
+PN3 = 1 * 10 ** 5
+
 X = np.array([
-    [[P11], [PN1]]
+    [[P11], [PN1]],
+    [[P12], [PN2]],
+    [[P13], [PN3]]
 ])
 
 B1 = 10 ** (-3)
@@ -37,7 +42,7 @@ class Solver:
         :param x:
         :return:
         """
-        l = len(theta) / 2
+        l = int(len(theta) / 2)
         beta0 = theta[:l].reshape(l, 1)
         beta1 = theta[l:].reshape(l, 1)
         n = int(l + 1)
@@ -165,8 +170,7 @@ class Solver:
 
 s = Solver()
 F = s.solve(THETA, X)
-print(F)
-"""
+
 H = s.jacobian(THETA, X)
 
 Y = np.array(F, copy=True)
@@ -184,4 +188,16 @@ while some_value > E:
     some_value = s.get_some_value(delta)
 
 print(theta)
-"""
+
+delta_theta = s.get_ls_theta(ethalon, THETA, X)
+delta = delta_theta
+theta = THETA + delta_theta
+some_value = s.get_some_value(delta)
+
+while some_value > E:
+    delta_theta = s.get_ls_theta(ethalon, theta, X)
+    delta = np.append(delta, delta_theta, axis=0)
+    theta = theta + delta_theta
+    some_value = s.get_some_value(delta)
+
+print(theta)
