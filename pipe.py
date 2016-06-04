@@ -27,6 +27,10 @@ B1 = 10 ** (-3)
 B0 = 0
 THETA = np.array([
     [B0],
+    [B0],
+    [B0],
+    [B1],
+    [B1],
     [B1]
 ])
 
@@ -137,7 +141,6 @@ class Solver:
         l = len(theta) / 2 + 2
         w = np.ones(l)
         w[0] = 1000
-
         n = len(x)
         W = np.concatenate([w for item in range(n)])
         W = np.diag(W)
@@ -168,6 +171,20 @@ class Solver:
         squares_sum = sum(list(squares))
         return sqrt(squares_sum) / len(data)
 
+    def wrapper(self, method, ethalon):
+        delta_theta = getattr(self, method)(ethalon, THETA, X)
+        delta = delta_theta
+        theta = THETA + delta_theta
+        some_value = self.get_some_value(delta)
+
+        while some_value > E:
+            delta_theta = getattr(self, method)(ethalon, THETA, X)
+            delta = np.append(delta, delta_theta, axis=0)
+            theta = theta + delta_theta
+            some_value = self.get_some_value(delta)
+            print(some_value)
+        return theta
+
 s = Solver()
 F = s.solve(THETA, X)
 
@@ -176,28 +193,4 @@ H = s.jacobian(THETA, X)
 Y = np.array(F, copy=True)
 ethalon = helper.generate(Y, THETA)
 
-delta_theta = s.get_wls_theta(ethalon, THETA, X)
-delta = delta_theta
-theta = THETA + delta_theta
-some_value = s.get_some_value(delta)
-
-while some_value > E:
-    delta_theta = s.get_wls_theta(ethalon, theta, X)
-    delta = np.append(delta, delta_theta, axis=0)
-    theta = theta + delta_theta
-    some_value = s.get_some_value(delta)
-
-print(theta)
-
-delta_theta = s.get_ls_theta(ethalon, THETA, X)
-delta = delta_theta
-theta = THETA + delta_theta
-some_value = s.get_some_value(delta)
-
-while some_value > E:
-    delta_theta = s.get_ls_theta(ethalon, theta, X)
-    delta = np.append(delta, delta_theta, axis=0)
-    theta = theta + delta_theta
-    some_value = s.get_some_value(delta)
-
-print(theta)
+print(s.wrapper(s.get_wls_theta.__name__, ethalon))
