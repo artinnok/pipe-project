@@ -27,10 +27,6 @@ B1 = 10 ** (-3)
 B0 = 0
 THETA = np.array([
     [B0],
-    [B0],
-    [B0],
-    [B1],
-    [B1],
     [B1]
 ])
 
@@ -138,9 +134,16 @@ class Solver:
         return delta_theta
 
     def weight(self, theta, x):
+        """
+        Вернет вес
+        :param theta:
+        :param x:
+        :return:
+        """
         l = len(theta) / 2 + 2
         w = np.ones(l)
         w[0] = 1000
+
         n = len(x)
         W = np.concatenate([w for item in range(n)])
         W = np.diag(W)
@@ -171,19 +174,20 @@ class Solver:
         squares_sum = sum(list(squares))
         return sqrt(squares_sum) / len(data)
 
-    def wrapper(self, method, ethalon):
-        delta_theta = getattr(self, method)(ethalon, THETA, X)
+    def wrapper(self, func, eth):
+        delta_theta = getattr(self, func)(eth, THETA, X)
         delta = delta_theta
         theta = THETA + delta_theta
         some_value = self.get_some_value(delta)
 
         while some_value > E:
-            delta_theta = getattr(self, method)(ethalon, THETA, X)
+            delta_theta = getattr(self, func)(eth, theta, X)
             delta = np.append(delta, delta_theta, axis=0)
             theta = theta + delta_theta
             some_value = self.get_some_value(delta)
-            print(some_value)
+
         return theta
+
 
 s = Solver()
 F = s.solve(THETA, X)
@@ -191,6 +195,9 @@ F = s.solve(THETA, X)
 H = s.jacobian(THETA, X)
 
 Y = np.array(F, copy=True)
-ethalon = helper.generate(Y, THETA)
+Y[0, 0] += 50
+Y[3, 0] += 50
+Y[6, 0] += 50
 
-print(s.wrapper(s.get_wls_theta.__name__, ethalon))
+print(s.wrapper(s.get_wls_theta.__name__, Y))
+print(s.wrapper(s.get_ls_theta.__name__, Y))
