@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import helper
 from math import sqrt
+import matplotlib.mlab as mlab
 
 # поддержка кириллицы
 font = {'family': 'Verdana', 'weight': 'normal'}
@@ -194,8 +195,8 @@ class Solver:
 s = Solver()
 F = s.solve(THETA, X)
 bound = helper.repeat(5, X)
-Y = np.array(F, copy=True)
 l = int(len(THETA) / 2 + 2)
+Y = np.array(F, copy=True)
 
 for item in range(1000):
     modes = helper.mass_generate(5, Y, THETA)
@@ -205,30 +206,70 @@ for item in range(1000):
     p = [e[i::l] for i in range(2, l - 1)]
     if item == 0:
         out = result
+        out_calc = calc
         q_std = np.std(q)
         p_std = np.std(p)
     else:
         out = np.append(out, result, axis=1)
         q_std = np.append(q_std, np.std(q))
         p_std = np.append(p_std, np.std(p))
+        out_calc = np.append(out_calc, calc, axis=1)
 
 b0 = np.concatenate((out[0], out[1]))
 b1 = np.concatenate((out[2], out[3]))
 
+H = s.jacobian(THETA, bound)
+W = s.weight(THETA, bound)
+Q = np.dot(W.T, W)
+
+k_e = np.zeros(len(H))
+k_e[::l] = helper.Q_SIGMA ** 2
+for i in range(2, l-1):
+    k_e[i::l] = helper.P_SIGMA ** 2
+
+k_e = np.diag(k_e)
+
+A = np.dot(H.T, Q)
+A = np.dot(A, H)
+Ainv = np.linalg.inv(A)
+k_theta = np.dot(Ainv, H.T)
+k_theta = np.dot(k_theta, Q)
+k_theta = np.dot(k_theta, k_e)
+k_theta = np.dot(k_theta, Q)
+k_theta = np.dot(k_theta, H)
+k_theta = np.dot(k_theta, Ainv)
+
+theta = result
+hh = s.singe_jacobian(THETA, X[0])
+k_y = np.dot(hh, k_theta)
+k_y = np.dot(k_y, hh.T)
+v = s.single_solve(THETA, X[0])
+
+q = out_calc[0]
+p = out_calc[2]
+
 plt.figure()
-plt.hist(b0)
+plt.plot(np.sort(q), mlab.normpdf(np.sort(q), v[0, 0], sqrt(k_y[0, 0])))
+plt.hist(q, normed=True)
+
+plt.figure()
+plt.plot(np.sort(p), mlab.normpdf(np.sort(p), v[2, 0], sqrt(k_y[2, 2])))
+plt.hist(p, normed=True)
+
+plt.show()
+
+
+
+"""
+plt.figure()
+plt.plot(np.sort(b0), mlab.normpdf(np.sort(b0), B0, sqrt(k_theta[0, 0])))
+plt.hist(b0, normed=True)
 plt.title('B0')
 
 plt.figure()
-plt.hist(b1)
+plt.plot(np.sort(b1), mlab.normpdf(np.sort(b1), B1, sqrt(k_theta[2, 2])))
+plt.hist(b1, normed=True)
 plt.title('B1')
 
-plt.figure()
-plt.hist(p_std)
-plt.title('p')
-
-plt.figure()
-plt.hist(q_std)
-plt.title('q')
-
 plt.show()
+"""
