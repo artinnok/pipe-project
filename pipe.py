@@ -17,21 +17,23 @@ PN2 = 1 * 10 ** 5
 P13 = 1.5 * 10 ** 5
 PN3 = 1 * 10 ** 5
 
+# краевые условия
 X = np.array([
     [[P11], [PN1]],
-    [[P12], [PN2]],
-    [[P13], [PN3]]
+    [[P12], [PN2]]
 ])
 
 B1 = 10 ** (-3)
 B0 = 0
 THETA = np.array([
     [B0],
+    [B0],
+    [B1],
     [B1]
 ])
 
 h = 10 ** (-6)
-E = 0.05
+E = 0.5
 
 
 class Solver:
@@ -174,14 +176,14 @@ class Solver:
         squares_sum = sum(list(squares))
         return sqrt(squares_sum) / len(data)
 
-    def wrapper(self, func, eth):
-        delta_theta = getattr(self, func)(eth, THETA, X)
+    def wrapper(self, func, measure, boundary):
+        delta_theta = getattr(self, func)(measure, THETA, boundary)
         delta = delta_theta
         theta = THETA + delta_theta
         some_value = self.get_some_value(delta)
 
         while some_value > E:
-            delta_theta = getattr(self, func)(eth, theta, X)
+            delta_theta = getattr(self, func)(measure, theta, boundary)
             delta = np.append(delta, delta_theta, axis=0)
             theta = theta + delta_theta
             some_value = self.get_some_value(delta)
@@ -191,13 +193,26 @@ class Solver:
 
 s = Solver()
 F = s.solve(THETA, X)
-
-H = s.jacobian(THETA, X)
-
+bound = helper.repeat(5, X)
 Y = np.array(F, copy=True)
-Y[0, 0] += 50
-Y[3, 0] += 50
-Y[6, 0] += 50
 
-print(s.wrapper(s.get_wls_theta.__name__, Y))
-print(s.wrapper(s.get_ls_theta.__name__, Y))
+for item in range(1000):
+    modes = helper.mass_generate(5, Y, THETA)
+    result = s.wrapper(s.get_wls_theta.__name__, modes, bound)
+    if item == 0:
+        out = result
+    else:
+        out = np.append(out, result, axis=1)
+
+
+b0 = np.concatenate((out[0], out[1]))
+b1 = np.concatenate((out[2], out[3]))
+# print(b0)
+# print('=' * 80)
+# print(b1)
+
+plt.hist(b0)
+plt.figure()
+
+plt.hist(b1)
+plt.show()
