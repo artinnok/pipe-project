@@ -63,5 +63,7 @@ data.xlsx
 .idea/*
 
 ~$input.xlsx
-
 input.xlsx
+~$input_filtered.xlsx
+input_filtered.xlsx
+
