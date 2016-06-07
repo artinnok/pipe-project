@@ -33,6 +33,8 @@ THETA = np.array([
     [B1]
 ])
 
+L = int(len(THETA) / 2 + 2)
+
 h = 10 ** (-6)
 E = 0.5
 
@@ -191,24 +193,59 @@ class Solver:
 
         return theta, v
 
+    def get_k_epsilon(self, l, q_sigma, p_sigma):
+        k_epsilon = np.zeros(l)
+        k_epsilon[::L] = q_sigma ** 2
+        for i in range(2, L-1):
+            k_epsilon[i::L] = p_sigma ** 2
+        k_epsilon = np.diag(k_epsilon)
+
+        return k_epsilon
+
+    def get_k_theta(self, theta, x):
+        H = self.jacobian(theta, x)
+        W = self.weight(theta, x)
+        Q = np.dot(W.T, W)
+        A = np.dot(H.T, Q)
+        A = np.dot(A, H)
+        k_epsilon = self.get_k_epsilon()
+
+        Ainv = np.linalg.inv(A)
+        k_theta = np.dot(Ainv, H.T)
+        k_theta = np.dot(k_theta, Q)
+        k_theta = np.dot(k_theta, k_epsilon)
+        k_theta = np.dot(k_theta, Q)
+        k_theta = np.dot(k_theta, H)
+        k_theta = np.dot(k_theta, Ainv)
+
+        return k_theta
+
+    def get_y(self, theta, x):
+        k_theta = self.get_k_theta(theta, x)
+        h = s.singe_jacobian(THETA, X[0])
+        k_y = np.dot(h, k_theta)
+        k_y = np.dot(k_y, h.T)
+
+        return k_y
 
 s = Solver()
 F = s.solve(THETA, X)
-bound = helper.repeat(5, X)
-l = int(len(THETA) / 2 + 2)
 Y = np.array(F, copy=True)
+V = s.single_solve(THETA, X[0])
+bound = helper.repeat(5, X)
 
+"""
 for item in range(1000):
     modes = helper.mass_generate(5, Y, THETA)
     result, calc = s.wrapper(s.get_wls_theta.__name__, modes, bound)
     e = modes - calc
-    q = e[::l]
-    p = [e[i::l] for i in range(2, l - 1)]
+    q = e[::L]
+    p = [e[i::L] for i in range(2, L - 1)]
     if item == 0:
         out = result
-        out_calc = calc
         q_std = np.std(q)
         p_std = np.std(p)
+        out_calc = calc
     else:
         out = np.append(out, result, axis=1)
         q_std = np.append(q_std, np.std(q))
@@ -217,48 +254,21 @@ for item in range(1000):
 
 b0 = np.concatenate((out[0], out[1]))
 b1 = np.concatenate((out[2], out[3]))
-
-H = s.jacobian(THETA, bound)
-W = s.weight(THETA, bound)
-Q = np.dot(W.T, W)
-
-k_e = np.zeros(len(H))
-k_e[::l] = helper.Q_SIGMA ** 2
-for i in range(2, l-1):
-    k_e[i::l] = helper.P_SIGMA ** 2
-
-k_e = np.diag(k_e)
-
-A = np.dot(H.T, Q)
-A = np.dot(A, H)
-Ainv = np.linalg.inv(A)
-k_theta = np.dot(Ainv, H.T)
-k_theta = np.dot(k_theta, Q)
-k_theta = np.dot(k_theta, k_e)
-k_theta = np.dot(k_theta, Q)
-k_theta = np.dot(k_theta, H)
-k_theta = np.dot(k_theta, Ainv)
-
-theta = result
-hh = s.singe_jacobian(THETA, X[0])
-k_y = np.dot(hh, k_theta)
-k_y = np.dot(k_y, hh.T)
-v = s.single_solve(THETA, X[0])
-
 q = out_calc[0]
 p = out_calc[2]
+"""
 
+"""
 plt.figure()
-plt.plot(np.sort(q), mlab.normpdf(np.sort(q), v[0, 0], sqrt(k_y[0, 0])))
+plt.plot(np.sort(q), mlab.normpdf(np.sort(q), V[0, 0], sqrt(k_y[0, 0])))
 plt.hist(q, normed=True)
 
 plt.figure()
-plt.plot(np.sort(p), mlab.normpdf(np.sort(p), v[2, 0], sqrt(k_y[2, 2])))
+plt.plot(np.sort(p), mlab.normpdf(np.sort(p), V[2, 0], sqrt(k_y[2, 2])))
 plt.hist(p, normed=True)
 
 plt.show()
-
-
+"""
 
 """
 plt.figure()
