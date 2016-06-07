@@ -138,3 +138,10 @@ def mass_generate(count, data, theta):
     out = np.concatenate(
         [generate(data, theta) for item in range(count)], axis=0)
     return out
+
+
+def repeat(count, data):
+    out = data
+    for item in range(count - 1):
+        out = np.append(out, data, axis=0)
+    return out
