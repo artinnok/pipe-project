@@ -133,7 +133,7 @@ class Solver:
         delta_theta = np.dot(Ainv, H.T)
         e = y - v
         delta_theta = np.dot(delta_theta, e)
-        return delta_theta
+        return delta_theta, v
 
     def weight(self, theta, x):
         """
@@ -169,7 +169,7 @@ class Solver:
         delta_theta = np.dot(delta_theta, Q)
         e = y - v
         delta_theta = np.dot(delta_theta, e)
-        return delta_theta
+        return delta_theta, v
 
     def get_some_value(self, data):
         squares = map(lambda x: x * x, data)
@@ -177,42 +177,58 @@ class Solver:
         return sqrt(squares_sum) / len(data)
 
     def wrapper(self, func, measure, boundary):
-        delta_theta = getattr(self, func)(measure, THETA, boundary)
+        delta_theta, v = getattr(self, func)(measure, THETA, boundary)
         delta = delta_theta
         theta = THETA + delta_theta
         some_value = self.get_some_value(delta)
 
         while some_value > E:
-            delta_theta = getattr(self, func)(measure, theta, boundary)
+            delta_theta, v = getattr(self, func)(measure, theta, boundary)
             delta = np.append(delta, delta_theta, axis=0)
             theta = theta + delta_theta
             some_value = self.get_some_value(delta)
 
-        return theta
+        return theta, v
 
 
 s = Solver()
 F = s.solve(THETA, X)
 bound = helper.repeat(5, X)
 Y = np.array(F, copy=True)
+l = int(len(THETA) / 2 + 2)
 
 for item in range(1000):
     modes = helper.mass_generate(5, Y, THETA)
-    result = s.wrapper(s.get_wls_theta.__name__, modes, bound)
+    result, calc = s.wrapper(s.get_wls_theta.__name__, modes, bound)
+    e = modes - calc
+    q = e[::l]
+    p = [e[i::l] for i in range(2, l - 1)]
     if item == 0:
         out = result
+        q_std = np.std(q)
+        p_std = np.std(p)
     else:
         out = np.append(out, result, axis=1)
-
+        q_std = np.append(q_std, np.std(q))
+        p_std = np.append(p_std, np.std(p))
 
 b0 = np.concatenate((out[0], out[1]))
 b1 = np.concatenate((out[2], out[3]))
-# print(b0)
-# print('=' * 80)
-# print(b1)
 
-plt.hist(b0)
 plt.figure()
+plt.hist(b0)
+plt.title('B0')
 
+plt.figure()
 plt.hist(b1)
+plt.title('B1')
+
+plt.figure()
+plt.hist(p_std)
+plt.title('p')
+
+plt.figure()
+plt.hist(q_std)
+plt.title('q')
+
 plt.show()
