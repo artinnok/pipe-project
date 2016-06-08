@@ -31,7 +31,7 @@ X = np.array([
     ]
 ])
 
-# начальные приближения коэффициентов
+# начальные приближения коэффициентов, также они задают конфигурацию ТУ
 B1 = 10 ** (-3)
 B0 = 0
 THETA = np.array([
@@ -178,17 +178,18 @@ class Solver:
         delta_theta, v = getattr(self, func)(y, THETA, x)
         delta = delta_theta
         theta = THETA + delta_theta
-        some_value = self.get_some_value(delta)
+        some_value = self.some_value(delta)
 
         while some_value > E:
             delta_theta, v = getattr(self, func)(y, theta, x)
             delta = np.append(delta, delta_theta, axis=0)
             theta = theta + delta_theta
-            some_value = self.get_some_value(delta)
+            some_value = self.some_value(delta)
 
         return theta, v
 
-    def weight(self, theta, x):
+    @staticmethod
+    def weight(theta, x):
         """
         Вернет матрицу весов для ОМНК
         :param theta:
@@ -204,7 +205,8 @@ class Solver:
         W = np.diag(W)
         return W
 
-    def get_some_value(self, data):
+    @staticmethod
+    def some_value(data):
         """
         Вернет критерий расстояния для МНК и ОМНК
         :param data:
@@ -274,12 +276,11 @@ class Solver:
 
 s = Solver()
 F = s.solve(THETA, X)
-Y = np.array(F, copy=True)
 V = s.single_solve(THETA, X[0])
 bound = helper.repeat(5, X)
 
 for item in range(1000):
-    modes = helper.mass_generate(5, Y, THETA)
+    modes = helper.mass_generate(5, F, THETA)
     result, calc = s.wrapper(s.get_wls_theta.__name__, modes, bound)
     e = modes - calc
     q = e[::L]
@@ -311,29 +312,3 @@ for item in range(6, 11):
 plt.hist(out, normed=True)
 
 plt.show()
-
-"""
-plt.figure()
-plt.plot(np.sort(q), mlab.normpdf(np.sort(q), V[0, 0], sqrt(k_y[0, 0])))
-plt.hist(q, normed=True)
-
-plt.figure()
-plt.plot(np.sort(p), mlab.normpdf(np.sort(p), V[2, 0], sqrt(k_y[2, 2])))
-plt.hist(p, normed=True)
-
-plt.show()
-"""
-
-"""
-plt.figure()
-plt.plot(np.sort(b0), mlab.normpdf(np.sort(b0), B0, sqrt(k_theta[0, 0])))
-plt.hist(b0, normed=True)
-plt.title('B0')
-
-plt.figure()
-plt.plot(np.sort(b1), mlab.normpdf(np.sort(b1), B1, sqrt(k_theta[2, 2])))
-plt.hist(b1, normed=True)
-plt.title('B1')
-
-plt.show()
-"""
