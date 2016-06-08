@@ -280,17 +280,21 @@ V = s.single_solve(THETA, X[0])
 bound = helper.repeat(5, X)
 
 for item in range(1000):
-    modes = helper.mass_generate(5, F, THETA)
+    modes = helper.generate(5, F, THETA)
     result, calc = s.wrapper(s.get_wls_theta.__name__, modes, bound)
     e = modes - calc
     q = e[::L]
     p = [e[i::L] for i in range(2, L - 1)]
+    q_std = np.std(q)
+    p_std = np.std(p)
+    k_y = s.get_k_y(result, X, q_std, p_std)
+    d = sqrt(k_y[2, 2])
     if item == 0:
         out = result
-        q_std = np.std(q)
-        p_std = np.std(p)
-        k_y = s.get_k_y(result, X, q_std, p_std)
-        d = sqrt(k_y[2, 2])
+        out_q_std = q_std
+        out_p_std = p_std
+        out_k_y = k_y
+        out_d = d
         out_calc = calc
     else:
         out = np.append(out, result, axis=1)

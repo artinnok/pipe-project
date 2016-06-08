@@ -124,7 +124,7 @@ def normalize(data):
     return out
 
 
-def generate(data, theta):
+def single_generate(data, theta):
     copy = np.array(data, copy=True)
     l = int(len(theta) / 2 + 2)
     copy[::l] += np.random.normal(0, Q_SIGMA, copy.shape)[::l]
@@ -133,9 +133,9 @@ def generate(data, theta):
     return copy
 
 
-def mass_generate(count, data, theta):
+def generate(count, data, theta):
     out = np.concatenate(
-        [generate(data, theta) for item in range(count)], axis=0)
+        [single_generate(data, theta) for item in range(count)], axis=0)
     return out
 
 
