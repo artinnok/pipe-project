@@ -1,9 +1,9 @@
+import matplotlib.pyplot as plt
 import numpy as np
+import scipy.stats as stats
 from openpyxl import load_workbook
 from sklearn.linear_model import LinearRegression, RANSACRegressor
-
 from utils import replace_comma, split_comma, split_slash, get_mean, get_rows
-
 
 WB = load_workbook(filename='input.xlsx', read_only=True)
 WS = WB.active
@@ -134,7 +134,6 @@ def generate(data, theta):
 
 
 def mass_generate(count, data, theta):
-    l = int(len(theta) / 2 + 2)
     out = np.concatenate(
         [generate(data, theta) for item in range(count)], axis=0)
     return out
@@ -145,3 +144,17 @@ def repeat(count, data):
     for item in range(count - 1):
         out = np.append(out, data, axis=0)
     return out
+
+
+def plot_norm(x, mu, sigma, title=None):
+    plt.figure()
+    plt.plot(np.sort(x), stats.norm.pdf(np.sort(x), mu, sigma))
+    plt.hist(x, normed=True)
+    plt.title(title)
+
+
+def plot_t(x, df, title=None):
+    plt.figure()
+    plt.plot(np.sort(x), stats.t.pdf(np.sort(x), df))
+    plt.hist(x, normed=True)
+    plt.title(title)
