@@ -3,6 +3,7 @@ import numpy as np
 import helper
 from math import sqrt
 import matplotlib.mlab as mlab
+import scipy.stats as stats
 
 # поддержка кириллицы
 font = {'family': 'Verdana', 'weight': 'normal'}
@@ -202,13 +203,13 @@ class Solver:
 
         return k_epsilon
 
-    def get_k_theta(self, theta, x):
+    def get_k_theta(self, theta, x, q_sigma, p_sigma):
         H = self.jacobian(theta, x)
         W = self.weight(theta, x)
         Q = np.dot(W.T, W)
         A = np.dot(H.T, Q)
         A = np.dot(A, H)
-        k_epsilon = self.get_k_epsilon()
+        k_epsilon = self.get_k_epsilon(len(H), q_sigma, p_sigma)
 
         Ainv = np.linalg.inv(A)
         k_theta = np.dot(Ainv, H.T)
@@ -220,8 +221,8 @@ class Solver:
 
         return k_theta
 
-    def get_y(self, theta, x):
-        k_theta = self.get_k_theta(theta, x)
+    def get_k_y(self, theta, x, q_sigma, p_sigma):
+        k_theta = self.get_k_theta(theta, x, q_sigma, p_sigma)
         h = s.singe_jacobian(THETA, X[0])
         k_y = np.dot(h, k_theta)
         k_y = np.dot(k_y, h.T)
@@ -234,7 +235,6 @@ Y = np.array(F, copy=True)
 V = s.single_solve(THETA, X[0])
 bound = helper.repeat(5, X)
 
-"""
 for item in range(1000):
     modes = helper.mass_generate(5, Y, THETA)
     result, calc = s.wrapper(s.get_wls_theta.__name__, modes, bound)
@@ -245,18 +245,29 @@ for item in range(1000):
         out = result
         q_std = np.std(q)
         p_std = np.std(p)
+        k_y = s.get_k_y(result, X, q_std, p_std)
+        d = sqrt(k_y[2, 2])
         out_calc = calc
     else:
         out = np.append(out, result, axis=1)
         q_std = np.append(q_std, np.std(q))
         p_std = np.append(p_std, np.std(p))
         out_calc = np.append(out_calc, calc, axis=1)
+        k_y = np.append(k_y, s.get_k_y(result, X, np.std(q), np.std(p)), axis=0)
+        d = np.append(d, sqrt(s.get_k_y(result, X, np.std(q), np.std(p))[2, 2]))
 
 b0 = np.concatenate((out[0], out[1]))
 b1 = np.concatenate((out[2], out[3]))
 q = out_calc[0]
 p = out_calc[2]
-"""
+
+out = np.array([(pr - V[2, 0]) / di for pr, di in zip(p, d)])
+plt.figure()
+for item in range(6, 11):
+    plt.plot(np.sort(out), stats.t.pdf(np.sort(out), item))
+plt.hist(out, normed=True)
+
+plt.show()
 
 """
 plt.figure()
