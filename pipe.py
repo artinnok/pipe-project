@@ -21,10 +21,17 @@ PN3 = 1 * 10 ** 5
 
 # краевые условия
 X = np.array([
-    [[P11], [PN1]],
-    [[P12], [PN2]]
+    [
+        [P11],
+        [PN1]
+    ],
+    [
+        [P12],
+        [PN2]
+    ]
 ])
 
+# начальные приближения коэффициентов
 B1 = 10 ** (-3)
 B0 = 0
 THETA = np.array([
@@ -41,11 +48,11 @@ E = 0.5
 
 
 class Solver:
-    def single_solve(self, theta, x):
+    def single_solve(self, theta, x_column):
         """
         Вернет вектор прогноза
         :param theta:
-        :param x:
+        :param x_column:
         :return:
         """
         l = int(len(theta) / 2)
@@ -64,7 +71,7 @@ class Solver:
 
         D = np.append(top, bottom, 0)
         Dinv = np.linalg.inv(D)
-        u = np.append(-beta0, x, 0)
+        u = np.append(-beta0, x_column, 0)
         v = np.dot(Dinv, u)
         return v
 
@@ -76,35 +83,35 @@ class Solver:
         :return:
         """
         out = np.concatenate(
-            [self.single_solve(theta, item) for item in x], axis=0
+            [self.single_solve(theta, col) for col in x], axis=0
         )
         return out
 
-    def column_of_single_jacobian(self, theta, index, x):
+    def column_of_single_jacobian(self, theta, index, x_column):
         """
         Вернет одну колонку якобиана
         :param theta:
         :param index:
-        :param x:
+        :param x_column:
         :return:
         """
         copy_theta = np.array(theta, copy=True)
         copy_theta[index] += h
-        v_mod = self.single_solve(copy_theta, x)
-        v = self.single_solve(theta, x)
+        v_mod = self.single_solve(copy_theta, x_column)
+        v = self.single_solve(theta, x_column)
         e = v_mod - v
         e /= h
         return e
 
-    def singe_jacobian(self, theta, x):
+    def singe_jacobian(self, theta, x_column):
         """
         Вернет один якобиан
         :param theta:
-        :param x:
+        :param x_column:
         :return:
         """
         out = np.concatenate(
-            [self.column_of_single_jacobian(theta, index, x)
+            [self.column_of_single_jacobian(theta, index, x_column)
              for index, item in enumerate(theta)],
             axis=1
         )
@@ -118,7 +125,7 @@ class Solver:
         :return:
         """
         out = np.concatenate(
-            [self.singe_jacobian(theta, item) for item in x], axis=0
+            [self.singe_jacobian(theta, col) for col in x], axis=0
         )
         return out
 
@@ -139,27 +146,12 @@ class Solver:
         delta_theta = np.dot(delta_theta, e)
         return delta_theta, v
 
-    def weight(self, theta, x):
-        """
-        Вернет вес
-        :param theta:
-        :param x:
-        :return:
-        """
-        l = len(theta) / 2 + 2
-        w = np.ones(l)
-        w[0] = 1000
-
-        n = len(x)
-        W = np.concatenate([w for item in range(n)])
-        W = np.diag(W)
-        return W
-
     def get_wls_theta(self, y, theta, x):
         """
-        Взвешенный МНК
+        ОМНК
         :param theta:
         :param x:
+        :param y:
         :return:
         """
         v = self.solve(theta, x)
@@ -175,35 +167,78 @@ class Solver:
         delta_theta = np.dot(delta_theta, e)
         return delta_theta, v
 
-    def get_some_value(self, data):
-        squares = map(lambda x: x * x, data)
-        squares_sum = sum(list(squares))
-        return sqrt(squares_sum) / len(data)
-
-    def wrapper(self, func, measure, boundary):
-        delta_theta, v = getattr(self, func)(measure, THETA, boundary)
+    def wrapper(self, func, y, x):
+        """
+        Обертка для МНК и ОМНК
+        :param func: get_ls_theta или get_wls_theta
+        :param y: эталонные измерения
+        :param x: краевые условия
+        :return:
+        """
+        delta_theta, v = getattr(self, func)(y, THETA, x)
         delta = delta_theta
         theta = THETA + delta_theta
         some_value = self.get_some_value(delta)
 
         while some_value > E:
-            delta_theta, v = getattr(self, func)(measure, theta, boundary)
+            delta_theta, v = getattr(self, func)(y, theta, x)
             delta = np.append(delta, delta_theta, axis=0)
             theta = theta + delta_theta
             some_value = self.get_some_value(delta)
 
         return theta, v
 
+    def weight(self, theta, x):
+        """
+        Вернет матрицу весов для ОМНК
+        :param theta:
+        :param x:
+        :return:
+        """
+        l = len(theta) / 2 + 2
+        w = np.ones(l)
+        w[0] = 1000
+
+        n = len(x)
+        W = np.concatenate([w for item in range(n)])
+        W = np.diag(W)
+        return W
+
+    def get_some_value(self, data):
+        """
+        Вернет критерий расстояния для МНК и ОМНК
+        :param data:
+        :return:
+        """
+        squares = map(lambda x: x * x, data)
+        squares_sum = sum(list(squares))
+        return sqrt(squares_sum) / len(data)
+
     def get_k_epsilon(self, l, q_sigma, p_sigma):
+        """
+        Считает K_{epsilon}
+        :param l:
+        :param q_sigma:
+        :param p_sigma:
+        :return:
+        """
         k_epsilon = np.zeros(l)
         k_epsilon[::L] = q_sigma ** 2
-        for i in range(2, L-1):
+        for i in range(2, L - 1):
             k_epsilon[i::L] = p_sigma ** 2
         k_epsilon = np.diag(k_epsilon)
 
         return k_epsilon
 
     def get_k_theta(self, theta, x, q_sigma, p_sigma):
+        """
+        Считает K_{theta}
+        :param theta:
+        :param x:
+        :param q_sigma:
+        :param p_sigma:
+        :return:
+        """
         H = self.jacobian(theta, x)
         W = self.weight(theta, x)
         Q = np.dot(W.T, W)
@@ -222,6 +257,14 @@ class Solver:
         return k_theta
 
     def get_k_y(self, theta, x, q_sigma, p_sigma):
+        """
+        Считает K_{y}
+        :param theta:
+        :param x:
+        :param q_sigma:
+        :param p_sigma:
+        :return:
+        """
         k_theta = self.get_k_theta(theta, x, q_sigma, p_sigma)
         h = s.singe_jacobian(THETA, X[0])
         k_y = np.dot(h, k_theta)
