@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import helper
+import helper as hr
 from math import sqrt
 import matplotlib.mlab as mlab
 import scipy.stats as stats
@@ -43,8 +43,8 @@ THETA = np.array([
 
 L = int(len(THETA) / 2 + 2)
 
-h = 10 ** (-6)
-E = 0.5
+STEP = 10 ** (-6)
+SETPOINT = 0.5
 
 
 class Solver:
@@ -60,20 +60,20 @@ class Solver:
         beta1 = theta[l:].reshape(l, 1)
         n = int(l + 1)
 
-        A2T = helper.get_a2(n)
-        A2T = helper.crutch(-beta1, A2T)  # костыль
+        A2T = hr.get_a2(n)
+        A2T = hr.crutch(-beta1, A2T)  # костыль
         ones = -np.ones((len(beta1), 1))  # костыль
         top = np.append(ones, A2T, 1)
 
-        A1T = helper.get_a1(n)
+        A1T = hr.get_a1(n)
         zeros = np.zeros((2, 1))
         bottom = np.append(zeros, A1T, 1)
 
         D = np.append(top, bottom, 0)
         Dinv = np.linalg.inv(D)
-        u = np.append(-beta0, x_column, 0)
-        v = np.dot(Dinv, u)
-        return v
+        g = np.append(-beta0, x_column, 0)
+        f = np.dot(Dinv, g)
+        return f
 
     def solve(self, theta, x):
         """
@@ -96,11 +96,11 @@ class Solver:
         :return:
         """
         copy_theta = np.array(theta, copy=True)
-        copy_theta[index] += h
-        v_mod = self.single_solve(copy_theta, x_column)
-        v = self.single_solve(theta, x_column)
-        e = v_mod - v
-        e /= h
+        copy_theta[index] += STEP
+        f_mod = self.single_solve(copy_theta, x_column)
+        f = self.single_solve(theta, x_column)
+        e = f_mod - f
+        e /= STEP
         return e
 
     def singe_jacobian(self, theta, x_column):
@@ -112,7 +112,7 @@ class Solver:
         """
         out = np.concatenate(
             [self.column_of_single_jacobian(theta, index, x_column)
-             for index, item in enumerate(theta)],
+             for index, th in enumerate(theta)],
             axis=1
         )
         return out
@@ -129,64 +129,59 @@ class Solver:
         )
         return out
 
-    def get_ls_theta(self, y, theta, x):
+    def lsm_theta(self, Y, theta, x):
         """
         МНК
         :param theta:
-        :param y:
+        :param Y:
         :param x:
         :return:
         """
-        v = self.solve(theta, x)
+        F = self.solve(theta, x)
         H = self.jacobian(theta, x)
         A = np.dot(H.T, H)
         Ainv = np.linalg.inv(A)
-        delta_theta = np.dot(Ainv, H.T)
-        e = y - v
-        delta_theta = np.dot(delta_theta, e)
-        return delta_theta, v
+        E = Y - F
+        dTHETA = hr.prod(Ainv, H.T, E)
+        return dTHETA, F
 
-    def get_wls_theta(self, y, theta, x):
+    def glsm_theta(self, Y, theta, x):
         """
         ОМНК
         :param theta:
         :param x:
-        :param y:
+        :param Y:
         :return:
         """
-        v = self.solve(theta, x)
+        F = self.solve(theta, x)
         H = self.jacobian(theta, x)
         W = self.weight(theta, x)
         Q = np.dot(W.T, W)
-        A = np.dot(H.T, Q)
-        A = np.dot(A, H)
+        A = hr.prod(H.T, Q, H)
         Ainv = np.linalg.inv(A)
-        delta_theta = np.dot(Ainv, H.T)
-        delta_theta = np.dot(delta_theta, Q)
-        e = y - v
-        delta_theta = np.dot(delta_theta, e)
-        return delta_theta, v
+        E = Y - F
+        dTHETA = hr.prod(Ainv, H.T, Q, E)
+        return dTHETA, F
 
     def wrapper(self, func, y, x):
         """
         Обертка для МНК и ОМНК
-        :param func: get_ls_theta или get_wls_theta
+        :param func: lsm_theta или glsm_theta
         :param y: эталонные измерения
         :param x: краевые условия
         :return:
         """
-        delta_theta, v = getattr(self, func)(y, THETA, x)
-        delta = delta_theta
-        theta = THETA + delta_theta
+        dTHETA, v = getattr(self, func)(y, THETA, x)
+        delta = dTHETA
+        theta = THETA + dTHETA
         some_value = self.some_value(delta)
 
-        while some_value > E:
-            delta_theta, v = getattr(self, func)(y, theta, x)
-            delta = np.append(delta, delta_theta, axis=0)
-            theta = theta + delta_theta
+        while some_value > SETPOINT:
+            dTHETA, F = getattr(self, func)(y, theta, x)
+            delta = np.append(delta, dTHETA, axis=0)
+            theta = theta + dTHETA
             some_value = self.some_value(delta)
-
-        return theta, v
+        return theta, F
 
     @staticmethod
     def weight(theta, x):
@@ -229,7 +224,6 @@ class Solver:
         for i in range(2, L - 1):
             k_epsilon[i::L] = p_sigma ** 2
         k_epsilon = np.diag(k_epsilon)
-
         return k_epsilon
 
     def get_k_theta(self, theta, x, q_sigma, p_sigma):
@@ -244,18 +238,10 @@ class Solver:
         H = self.jacobian(theta, x)
         W = self.weight(theta, x)
         Q = np.dot(W.T, W)
-        A = np.dot(H.T, Q)
-        A = np.dot(A, H)
-        k_epsilon = self.get_k_epsilon(len(H), q_sigma, p_sigma)
-
+        A = hr.prod(H.T, Q, H)
         Ainv = np.linalg.inv(A)
-        k_theta = np.dot(Ainv, H.T)
-        k_theta = np.dot(k_theta, Q)
-        k_theta = np.dot(k_theta, k_epsilon)
-        k_theta = np.dot(k_theta, Q)
-        k_theta = np.dot(k_theta, H)
-        k_theta = np.dot(k_theta, Ainv)
-
+        k_epsilon = self.get_k_epsilon(len(H), q_sigma, p_sigma)
+        k_theta = hr.prod(Ainv, H.T, Q, k_epsilon, Q, H, Ainv)
         return k_theta
 
     def get_k_y(self, theta, x, q_sigma, p_sigma):
@@ -269,50 +255,7 @@ class Solver:
         """
         k_theta = self.get_k_theta(theta, x, q_sigma, p_sigma)
         h = s.singe_jacobian(THETA, X[0])
-        k_y = np.dot(h, k_theta)
-        k_y = np.dot(k_y, h.T)
-
+        k_y = hr.prod(h, k_theta, h.T)
         return k_y
 
 s = Solver()
-F = s.solve(THETA, X)
-V = s.single_solve(THETA, X[0])
-bound = helper.repeat(5, X)
-
-for item in range(1000):
-    modes = helper.generate(5, F, THETA)
-    result, calc = s.wrapper(s.get_wls_theta.__name__, modes, bound)
-    e = modes - calc
-    q = e[::L]
-    p = [e[i::L] for i in range(2, L - 1)]
-    q_std = np.std(q)
-    p_std = np.std(p)
-    k_y = s.get_k_y(result, X, q_std, p_std)
-    d = sqrt(k_y[2, 2])
-    if item == 0:
-        out = result
-        out_q_std = q_std
-        out_p_std = p_std
-        out_k_y = k_y
-        out_d = d
-        out_calc = calc
-    else:
-        out = np.append(out, result, axis=1)
-        q_std = np.append(q_std, np.std(q))
-        p_std = np.append(p_std, np.std(p))
-        out_calc = np.append(out_calc, calc, axis=1)
-        k_y = np.append(k_y, s.get_k_y(result, X, np.std(q), np.std(p)), axis=0)
-        d = np.append(d, sqrt(s.get_k_y(result, X, np.std(q), np.std(p))[2, 2]))
-
-b0 = np.concatenate((out[0], out[1]))
-b1 = np.concatenate((out[2], out[3]))
-q = out_calc[0]
-p = out_calc[2]
-
-out = np.array([(pr - V[2, 0]) / di for pr, di in zip(p, d)])
-plt.figure()
-for item in range(6, 11):
-    plt.plot(np.sort(out), stats.t.pdf(np.sort(out), item))
-plt.hist(out, normed=True)
-
-plt.show()
