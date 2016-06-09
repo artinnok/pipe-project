@@ -1,9 +1,8 @@
+from math import sqrt
+
+import helper as hr
 import matplotlib.pyplot as plt
 import numpy as np
-import helper as hr
-from math import sqrt
-import matplotlib.mlab as mlab
-import scipy.stats as stats
 
 # поддержка кириллицы
 font = {'family': 'Verdana', 'weight': 'normal'}
@@ -37,11 +36,16 @@ B0 = 0
 THETA = np.array([
     [B0],
     [B0],
+    [B0],
+    [B0],
+    [B1],
+    [B1],
     [B1],
     [B1]
 ])
 
-L = int(len(THETA) / 2 + 2)
+# количество объектов ТУ
+OBJ = int(len(THETA) / 2)
 
 STEP = 10 ** (-6)
 SETPOINT = 0.5
@@ -55,10 +59,9 @@ class Solver:
         :param x_column:
         :return:
         """
-        l = int(len(theta) / 2)
-        beta0 = theta[:l].reshape(l, 1)
-        beta1 = theta[l:].reshape(l, 1)
-        n = int(l + 1)
+        beta0 = theta[:OBJ].reshape(OBJ, 1)
+        beta1 = theta[OBJ:].reshape(OBJ, 1)
+        n = OBJ + 1
 
         A2T = hr.get_a2(n)
         A2T = hr.crutch(-beta1, A2T)  # костыль
@@ -171,7 +174,7 @@ class Solver:
         :param x: краевые условия
         :return:
         """
-        dTHETA, v = getattr(self, func)(y, THETA, x)
+        dTHETA, F = getattr(self, func)(y, THETA, x)
         delta = dTHETA
         theta = THETA + dTHETA
         some_value = self.some_value(delta)
@@ -191,10 +194,8 @@ class Solver:
         :param x:
         :return:
         """
-        l = len(theta) / 2 + 2
-        w = np.ones(l)
+        w = np.ones(OBJ)
         w[0] = 1000
-
         n = len(x)
         W = np.concatenate([w for item in range(n)])
         W = np.diag(W)
@@ -211,10 +212,9 @@ class Solver:
         squares_sum = sum(list(squares))
         return sqrt(squares_sum) / len(data)
 
-    def get_k_epsilon(self, l, q_sigma, p_sigma):
+    def get_k_epsilon(self, q_sigma, p_sigma):
         """
         Считает K_{epsilon}
-        :param l:
         :param q_sigma:
         :param p_sigma:
         :return:
@@ -259,3 +259,6 @@ class Solver:
         return k_y
 
 s = Solver()
+X = hr.repeat(5, X)
+F = s.solve(THETA, X)
+Y = hr.add_noise(F, OBJ)

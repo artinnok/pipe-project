@@ -108,30 +108,13 @@ def crutch(b, a):
     return np.array(out)
 
 
-def normalize(data):
-    max_value = max(data)
-    min_value = min(data)
-    out = []
-    for item in data:
-        foo = item - min_value
-        foo /= max_value - min_value
-        out.append(foo)
-    return out
-
-
-def single_generate(data, theta):
+def add_noise(data, l):
+    l += 2
     copy = np.array(data, copy=True)
-    l = int(len(theta) / 2 + 2)
     copy[::l] += np.random.normal(0, Q_SIGMA, copy.shape)[::l]
     for item in range(2, l - 1):
         copy[item::l] += np.random.normal(0, P_SIGMA, copy.shape)[item::l]
     return copy
-
-
-def generate(count, data, theta):
-    out = np.concatenate(
-        [single_generate(data, theta) for item in range(count)], axis=0)
-    return out
 
 
 def repeat(count, data):
