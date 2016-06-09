@@ -46,39 +46,34 @@ class Data:
         return np.array(out)
 
 
-# регрессия
-def linear_predict(x, y):  # линейная регрессия
-    regr = LinearRegression()
-    regr.fit(x, y)
-    return regr.predict(x)
+class Regression:
+    def linear_predict(self, x, y):  # линейная регрессия
+        regr = LinearRegression()
+        regr.fit(x, y)
+        return regr.predict(x)
 
+    def get_ransac(self, x, y):  # RANSAC регрессор
+        ransac = RANSACRegressor(LinearRegression(), residual_threshold=5)
+        ransac.fit(x, y)
+        return ransac
 
-def get_ransac(x, y):  # RANSAC регрессор
-    ransac = RANSACRegressor(LinearRegression(), residual_threshold=5)
-    ransac.fit(x, y)
-    return ransac
+    def ransac_predict(self, x, y):
+        ransac = self.get_ransac(x, y)
+        return ransac.predict(x)
 
+    def ransac_mask(self, x, y):
+        ransac = self.get_ransac(x, y)
+        in_mask = ransac.inlier_mask_
+        out_mask = np.logical_not(in_mask)
+        return in_mask, out_mask
 
-def ransac_predict(x, y):
-    ransac = get_ransac(x, y)
-    return ransac.predict(x)
+    def get_inliers(self, x, y):
+        in_mask, out_mask = self.ransac_mask(x, y)
+        return x[in_mask], y[in_mask]
 
-
-def ransac_mask(x, y):
-    ransac = get_ransac(x, y)
-    in_mask = ransac.inlier_mask_
-    out_mask = np.logical_not(in_mask)
-    return in_mask, out_mask
-
-
-def get_inliers(x, y):
-    in_mask, out_mask = ransac_mask(x, y)
-    return x[in_mask], y[in_mask]
-
-
-def get_outliers(cls, x, y):
-    in_mask, out_mask = ransac_mask(x, y)
-    return x[out_mask], y[out_mask]
+    def get_outliers(self, x, y):
+        in_mask, out_mask = self.ransac_mask(x, y)
+        return x[out_mask], y[out_mask]
 
 
 # матрицы
@@ -143,6 +138,13 @@ def repeat(count, data):
     out = data
     for item in range(count - 1):
         out = np.append(out, data, axis=0)
+    return out
+
+
+def prod(*args):
+    out = args[0]
+    for item in args[1:]:
+        out = np.dot(out, item)
     return out
 
 
