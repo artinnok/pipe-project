@@ -11,23 +11,13 @@ plt.rc('font', **font)
 # установка формата вывода
 np.set_printoptions(precision=10, suppress=True, linewidth=150)
 
-P11 = 2 * 10 ** 5
-PN1 = 1 * 10 ** 5
-P12 = 3 * 10 ** 5
-PN2 = 1 * 10 ** 5
-P13 = 1.5 * 10 ** 5
-PN3 = 1 * 10 ** 5
-
 # краевые условия
 X = np.array([
-    [
-        [P11],
-        [PN1]
-    ],
-    [
-        [P12],
-        [PN2]
-    ]
+    [[2 * 10 ** 5], [1 * 10 ** 5]],
+    [[3 * 10 ** 5], [1.5 * 10 ** 5]],
+    [[1.5 * 10 ** 5], [1 * 10 ** 5]],
+    [[4 * 10 ** 5], [2 * 10 ** 5]],
+    [[3.5 * 10 ** 5], [1.9 * 10 ** 5]]
 ])
 
 # начальные приближения коэффициентов, также они задают конфигурацию ТУ
@@ -36,10 +26,6 @@ B0 = 0
 THETA = np.array([
     [B0],
     [B0],
-    [B0],
-    [B0],
-    [B1],
-    [B1],
     [B1],
     [B1]
 ])
@@ -47,8 +33,14 @@ THETA = np.array([
 # количество объектов ТУ
 OBJ = int(len(THETA) / 2)
 
+# необходимо для вычисления колонки якобиана
 STEP = 10 ** (-6)
+
+# уставка для МНК и ОМНК
 SETPOINT = 0.5
+
+N = 10
+K = 4
 
 
 class Solver:
@@ -158,7 +150,7 @@ class Solver:
         """
         F = self.solve(theta, x)
         H = self.jacobian(theta, x)
-        W = self.weight(theta, x)
+        W = self.weight(x)
         Q = np.dot(W.T, W)
         A = hr.prod(H.T, Q, H)
         Ainv = np.linalg.inv(A)
@@ -187,14 +179,13 @@ class Solver:
         return theta, F
 
     @staticmethod
-    def weight(theta, x):
+    def weight(x):
         """
         Вернет матрицу весов для ОМНК
-        :param theta:
         :param x:
         :return:
         """
-        w = np.ones(OBJ)
+        w = np.ones(OBJ + 2)
         w[0] = 1000
         n = len(x)
         W = np.concatenate([w for item in range(n)])
@@ -212,48 +203,46 @@ class Solver:
         squares_sum = sum(list(squares))
         return sqrt(squares_sum) / len(data)
 
-    def get_k_epsilon(self, q_sigma, p_sigma):
+    def get_k_epsilon(self, Y, theta, x):
         """
         Считает K_{epsilon}
-        :param q_sigma:
-        :param p_sigma:
-        :return:
-        """
-        k_epsilon = np.zeros(l)
-        k_epsilon[::L] = q_sigma ** 2
-        for i in range(2, L - 1):
-            k_epsilon[i::L] = p_sigma ** 2
-        k_epsilon = np.diag(k_epsilon)
-        return k_epsilon
-
-    def get_k_theta(self, theta, x, q_sigma, p_sigma):
-        """
-        Считает K_{theta}
+        :param Y:
         :param theta:
         :param x:
-        :param q_sigma:
-        :param p_sigma:
+        :return:
+        """
+        F = self.solve(theta, x)
+        E = Y - F
+        k_epsilon = np.sum(E * E.T)
+        k_epsilon /= N - K
+        return k_epsilon
+
+    def get_k_theta(self, Y, theta, x):
+        """
+        Считает K_{theta}
+        :param Y:
+        :param theta:
+        :param x:
         :return:
         """
         H = self.jacobian(theta, x)
-        W = self.weight(theta, x)
+        W = self.weight(x)
         Q = np.dot(W.T, W)
         A = hr.prod(H.T, Q, H)
         Ainv = np.linalg.inv(A)
-        k_epsilon = self.get_k_epsilon(len(H), q_sigma, p_sigma)
+        k_epsilon = self.get_k_epsilon(Y, theta, x)
         k_theta = hr.prod(Ainv, H.T, Q, k_epsilon, Q, H, Ainv)
         return k_theta
 
-    def get_k_y(self, theta, x, q_sigma, p_sigma):
+    def get_k_y(self, Y, theta, x):
         """
         Считает K_{y}
+        :param Y:
         :param theta:
         :param x:
-        :param q_sigma:
-        :param p_sigma:
         :return:
         """
-        k_theta = self.get_k_theta(theta, x, q_sigma, p_sigma)
+        k_theta = self.get_k_theta(Y, theta, x)
         h = s.singe_jacobian(THETA, X[0])
         k_y = hr.prod(h, k_theta, h.T)
         return k_y
@@ -262,3 +251,4 @@ s = Solver()
 X = hr.repeat(5, X)
 F = s.solve(THETA, X)
 Y = hr.add_noise(F, OBJ)
+print(s.get_k_epsilon(Y, THETA, X))
