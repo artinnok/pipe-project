@@ -117,10 +117,10 @@ def add_noise(data, l):
     return copy
 
 
-def repeat(count, data):
+def repeat(count, data, axis):
     out = data
     for item in range(count - 1):
-        out = np.append(out, data, axis=0)
+        out = np.append(out, data, axis=axis)
     return out
 
 
@@ -133,13 +133,15 @@ def prod(*args):
 
 def plot_norm(x, mu, sigma, title=None):
     plt.figure()
-    plt.plot(np.sort(x), stats.norm.pdf(np.sort(x), mu, sigma))
+    plt.tick_params(axis='both', which='major', labelsize=16)
+    plt.plot(np.sort(x), stats.norm.pdf(np.sort(x), mu, sigma), linewidth=5)
     plt.hist(x, normed=True)
     plt.title(title)
 
 
 def plot_t(x, df, title=None):
     plt.figure()
+    plt.tick_params(axis='both', which='major', labelsize=16)
     plt.plot(np.sort(x), stats.t.pdf(np.sort(x), df))
     plt.hist(x, normed=True)
     plt.title(title)
