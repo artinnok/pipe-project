@@ -1,6 +1,7 @@
 from math import sqrt
 
 import helper as hr
+import scipy as sc
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -32,6 +33,9 @@ THETA = np.array([
 
 # количество объектов ТУ
 OBJ = int(len(THETA) / 2)
+
+# количество переменных в гидравлическом уравнении
+L = OBJ + 2
 
 # необходимо для вычисления колонки якобиана
 STEP = 10 ** (-6)
@@ -107,8 +111,7 @@ class Solver:
         """
         out = np.concatenate(
             [self.column_of_single_jacobian(theta, index, x_column)
-             for index, th in enumerate(theta)],
-            axis=1
+             for index, th in enumerate(theta)], axis=1
         )
         return out
 
@@ -203,7 +206,20 @@ class Solver:
         squares_sum = sum(list(squares))
         return sqrt(squares_sum) / len(data)
 
-    def get_k_epsilon(self, Y, theta, x):
+    def single_k_epsilon(self, Y, theta, x_column):
+        """
+        Вернет одно значение K_{epsilon}
+        :param Y: соответствующий колонке Х зашумленный расчет
+        :param theta:
+        :param x_column:
+        :return:
+        """
+        F = self.single_solve(theta, x_column)
+        E = Y - F
+        k_epsilon = E * E.T
+        return k_epsilon
+
+    def k_epsilon(self, Y, theta, x):
         """
         Считает K_{epsilon}
         :param Y:
@@ -211,13 +227,21 @@ class Solver:
         :param x:
         :return:
         """
-        F = self.solve(theta, x)
-        E = Y - F
-        k_epsilon = np.sum(E * E.T)
-        k_epsilon /= N - K
-        return k_epsilon
+        l = OBJ + 2
+        out = sum([
+            self.single_k_epsilon(Y[index * l: (index + 1) * l], theta, col)
+            for index, col in enumerate(x)
+        ])
+        out /= N - K
+        return out
 
-    def get_k_theta(self, Y, theta, x):
+    def k_epsilon_block(self, Y, theta, x):
+        k_epsilon = self.k_epsilon(Y, theta, x)
+        k_epsilon = np.array([k_epsilon for i in range(N)])
+        block = sc.linalg.block_diag(*k_epsilon)
+        return block
+
+    def k_theta(self, Y, theta, x):
         """
         Считает K_{theta}
         :param Y:
@@ -230,11 +254,11 @@ class Solver:
         Q = np.dot(W.T, W)
         A = hr.prod(H.T, Q, H)
         Ainv = np.linalg.inv(A)
-        k_epsilon = self.get_k_epsilon(Y, theta, x)
+        k_epsilon = self.k_epsilon_block(Y, theta, x)
         k_theta = hr.prod(Ainv, H.T, Q, k_epsilon, Q, H, Ainv)
         return k_theta
 
-    def get_k_y(self, Y, theta, x):
+    def k_y(self, Y, theta, x):
         """
         Считает K_{y}
         :param Y:
@@ -242,13 +266,47 @@ class Solver:
         :param x:
         :return:
         """
-        k_theta = self.get_k_theta(Y, theta, x)
+        k_theta = self.k_theta(Y, theta, x)
         h = s.singe_jacobian(THETA, X[0])
         k_y = hr.prod(h, k_theta, h.T)
         return k_y
 
 s = Solver()
-X = hr.repeat(5, X)
+X = hr.repeat(2, X, 0)
 F = s.solve(THETA, X)
-Y = hr.add_noise(F, OBJ)
-print(s.get_k_epsilon(Y, THETA, X))
+
+out = []
+for item in range(100):
+    Y = hr.add_noise(F, OBJ)
+    result_THETA, calc_F = s.wrapper('glsm_theta', Y, X)
+    if item == 0:
+        out = result_THETA
+        out_e = Y - calc_F
+        out_F = calc_F
+    else:
+        out = np.append(out, result_THETA, axis=1)
+        out_e = np.append(out_e, Y - calc_F, axis=1)
+        out_F = np.append(out_F, calc_F, axis=1)
+
+b0 = np.concatenate((out[0], out[1]))
+b1 = np.concatenate((out[2], out[3]))
+
+q_e = np.concatenate(out_e[::L]).flatten()
+p_e = np.concatenate([out_e[i::L] for i in range(2, L - 1)]).flatten()
+
+q = out_F[0]
+p = out_F[2]
+
+K_Y = s.k_y(Y, THETA, X)
+
+hr.plot_norm(q, F[0, 0], sqrt(K_Y[0, 0]), 'q')
+hr.plot_norm(p, F[2, 0], sqrt(K_Y[2, 2]), 'p')
+
+# hr.plot_norm(b0, B0, sqrt(K_THETA[0, 0]), 'beta 0')
+# hr.plot_norm(b1, B1, sqrt(K_THETA[2, 2]), 'beta 1')
+
+# hr.plot_norm(q_e, 0, sqrt(K_Y[0, 0]), 'q_e')
+# hr.plot_norm(p_E, 0, sqrt(K_Y[2, 2]), 'p_e')
+
+
+plt.show()
