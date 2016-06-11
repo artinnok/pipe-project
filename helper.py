@@ -142,6 +142,6 @@ def plot_norm(x, mu, sigma, title=None):
 def plot_t(x, df, title=None):
     plt.figure()
     plt.tick_params(axis='both', which='major', labelsize=16)
-    plt.plot(np.sort(x), stats.t.pdf(np.sort(x), df))
+    plt.plot(np.sort(x), stats.t.pdf(np.sort(x), df), linewidth=5)
     plt.hist(x, normed=True)
     plt.title(title)

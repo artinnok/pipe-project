@@ -276,7 +276,7 @@ X = hr.repeat(2, X, 0)
 F = s.solve(THETA, X)
 
 out = []
-for item in range(100):
+for item in range(1000):
     Y = hr.add_noise(F, OBJ)
     result_THETA, calc_F = s.wrapper('glsm_theta', Y, X)
     if item == 0:
@@ -298,15 +298,19 @@ q = out_F[0]
 p = out_F[2]
 
 K_Y = s.k_y(Y, THETA, X)
+K_THETA = s.k_theta(Y, THETA, X)
 
 hr.plot_norm(q, F[0, 0], sqrt(K_Y[0, 0]), 'q')
 hr.plot_norm(p, F[2, 0], sqrt(K_Y[2, 2]), 'p')
 
-# hr.plot_norm(b0, B0, sqrt(K_THETA[0, 0]), 'beta 0')
-# hr.plot_norm(b1, B1, sqrt(K_THETA[2, 2]), 'beta 1')
+hr.plot_norm(b0, B0, sqrt(K_THETA[0, 0]), 'beta 0')
+hr.plot_norm(b1, B1, sqrt(K_THETA[2, 2]), 'beta 1')
 
-# hr.plot_norm(q_e, 0, sqrt(K_Y[0, 0]), 'q_e')
-# hr.plot_norm(p_E, 0, sqrt(K_Y[2, 2]), 'p_e')
+hr.plot_norm(q_e, 0, sqrt(K_Y[0, 0]), 'q_e')
+hr.plot_norm(p_e, 0, sqrt(K_Y[2, 2]), 'p_e')
 
+t = (p - F[2, 0]) / sqrt(K_Y[2, 2])
+
+hr.plot_t(t, N - K, 't')
 
 plt.show()
