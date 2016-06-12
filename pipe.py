@@ -282,24 +282,23 @@ s = Solver()
 X = hr.repeat(2, X, 0)
 F = s.solve(THETA, X)
 
-out = []
 for item in range(1000):
     Y = hr.add_noise(F, OBJ)
     result_THETA, calc_F = s.wrapper('glsm_theta', Y, X)
     if item == 0:
-        out = result_THETA
-        out_e = Y - calc_F
+        out_THETA = result_THETA
+        out_E = Y - calc_F
         out_F = calc_F
     else:
-        out = np.append(out, result_THETA, axis=1)
-        out_e = np.append(out_e, Y - calc_F, axis=1)
+        out_THETA = np.append(out_THETA, result_THETA, axis=1)
+        out_E = np.append(out_E, Y - calc_F, axis=1)
         out_F = np.append(out_F, calc_F, axis=1)
 
-b0 = np.concatenate((out[0], out[1]))
-b1 = np.concatenate((out[2], out[3]))
+b0 = np.concatenate((out_THETA[0], out_THETA[1]))
+b1 = np.concatenate((out_THETA[2], out_THETA[3]))
 
-q_e = np.concatenate(out_e[::L]).flatten()
-p_e = np.concatenate([out_e[i::L] for i in range(2, L - 1)]).flatten()
+q_e = np.concatenate(out_E[::L]).flatten()
+p_e = np.concatenate([out_E[i::L] for i in range(2, L - 1)]).flatten()
 
 q = out_F[0]
 p = out_F[2]
