@@ -236,6 +236,13 @@ class Solver:
         return out
 
     def k_epsilon_block(self, Y, theta, x):
+        """
+        Составляет блочно - диагональную матрицу из K_{epsilon}
+        :param Y:
+        :param theta:
+        :param x:
+        :return:
+        """
         k_epsilon = self.k_epsilon(Y, theta, x)
         k_epsilon = np.array([k_epsilon for i in range(N)])
         block = sc.linalg.block_diag(*k_epsilon)
